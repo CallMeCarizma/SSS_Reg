@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ title }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm" style="min-height:76vh;overflow:hidden;border-radius:18px;">
+  <div class="d-flex" style="min-height:76vh;">
+
+    <!-- Левая колонка -->
+    <div style="width:400px;min-width:400px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb;">
+        <form method="get" class="d-flex gap-2">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 pe-1">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" name="q"
+                   value="{{ q }}" placeholder="Поиск по сотрудникам">
+          </div>
+          <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          <a href="/employees/create/" class="btn btn-primary flex-shrink-0" title="Добавить сотрудника">
+            <i class="bi bi-plus-circle"></i>
+          </a>
+        </form>
+      </div>
+
+      <div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:flex-end;">
+        <button onclick="sortEmpList()" id="emp-sort-btn" title="Сортировка" style="border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:.8rem;color:#6b7280;"><i class="bi bi-sort-alpha-down"></i></button>
+      </div>
+
+      <div style="overflow-y:auto;flex:1;" id="emp-list-scroll">
+        {% for e in items %}
+        <div class="emp-item" data-id="{{ e.id }}" data-name="{{ e.full_name|lower }}"
+             onclick="_checkUnsaved(function(){loadEmployee({{ e.id }}, document.querySelector('.emp-item[data-id=\'{{ e.id }}\']'))})"
+             style="padding:13px 18px;border-bottom:1px solid #e5e7eb;cursor:pointer;border-left:3px solid transparent;transition:background .12s;">
+          <div style="font-size:.7rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">#{{ e.id }}</div>
+          <div class="emp-item-name" style="font-weight:700;color:#18212f;font-size:.92rem;margin-bottom:3px;line-height:1.3;">{{ e.full_name }}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            {% if e.email %}
+            <span style="font-size:.78rem;color:#6b7280;">{{ e.email }}</span>
+            {% endif %}
+            {% if e.phone %}
+            <span style="color:#d1d5db;">·</span>
+            <span style="font-size:.78rem;color:#9ca3af;">{{ e.phone }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted p-5">
+          <i class="bi bi-person-badge" style="font-size:2.2rem;opacity:.3;display:block;margin-bottom:8px;"></i>
+          Сотрудников не найдено
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Правая колонка -->
+    <div class="flex-grow-1 d-flex flex-column" id="emp-detail" style="overflow-y:auto;background:#fff;">
+      <div class="m-auto text-center text-muted" style="padding:80px 32px;">
+        <i class="bi bi-arrow-left-circle" style="font-size:3rem;opacity:.25;display:block;margin-bottom:12px;"></i>
+        Выберите сотрудника из списка слева
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.emp-item:hover  { background:#f8fafc; }
+.emp-item.active { background:#eff6ff !important; border-left-color:#0d6efd !important; }
+.ef { width:100%;border:1px solid #d1d5db;border-radius:8px;padding:7px 10px;
+      font-weight:600;color:#18212f;font-size:.9rem;background:#fff;font-family:inherit; }
+.ef:focus { outline:none;border-color:#86b7fe;box-shadow:0 0 0 3px rgba(13,110,253,.12); }
+</style>
+
+<script>
+let currentEmpId = null;
+let currentEmp   = null;
+
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function esc(s) {
+  if (s === null || s === undefined || s === '') return '—';
+  const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML;
+}
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const FS = 'padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid #e5e7eb;';
+const FL = 'font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:4px;';
+const FV = 'font-weight:600;color:#18212f;font-size:.9rem;';
+
+function field(label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div><div style="${FV}">${esc(value)}</div></div>`;
+}
+function eInput(name, label, value, req, type) {
+  type = type || 'text';
+  return `<div style="${FS}"><div style="${FL}">${label}${req?'<span style="color:#ef4444;margin-left:2px">*</span>':''}</div>
+    <input class="ef" type="${type}" name="${name}" value="${escAttr(value ?? '')}"></div>`;
+}
+function eTextarea(name, label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div>
+    <textarea class="ef" name="${name}" rows="4" style="resize:vertical;">${esc(value ?? '')}</textarea></div>`;
+}
+
+function loadEmployee(id, el) {
+  currentEmpId = id;
+  document.querySelectorAll('.emp-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  fetch('/employees/' + id + '/detail/')
+    .then(r => r.json())
+    .then(e => { currentEmp = e; renderDetail(e); })
+    .catch(() => {
+      document.getElementById('emp-detail').innerHTML =
+        '<div class="m-auto text-center text-muted p-5"><i class="bi bi-exclamation-circle"></i> Ошибка загрузки</div>';
+    });
+}
+
+function renderDetail(e) {
+  document.getElementById('emp-detail').innerHTML = `
+    <div style="padding:24px 28px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-shrink:0;">
+      <div>
+        <h4 style="font-size:1.05rem;font-weight:800;margin:0 0 6px;color:#18212f;line-height:1.35;">${esc(e.full_name)}</h4>
+        <span class="badge bg-success">Сотрудник</span>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+          <i class="bi bi-pencil-square"></i> Изменить
+        </button>
+        <a href="/employees/${e.id}/delete/" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash3"></i>
+        </a>
+      </div>
+    </div>
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      <div class="row g-2">
+        <div class="col-6">${field('Email', e.email)}</div>
+        <div class="col-6">${field('Телефон', e.phone)}</div>
+      </div>
+      ${field('Паспортные данные', e.passport_data)}
+    </div>`;
+}
+
+function renderEditMode() {
+  const e = currentEmp;
+  if (!e) return;
+  document.getElementById('emp-detail').innerHTML = `
+    <div style="padding:20px 28px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0;background:#fff8f0;">
+      <div>
+        <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;">● Режим редактирования</span>
+        <div style="font-weight:800;color:#18212f;font-size:1rem;margin-top:2px;">${esc(e.full_name)}</div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="saveEmployee()" class="btn btn-sm btn-primary">
+          <i class="bi bi-check2-circle"></i> Сохранить
+        </button>
+        <button onclick="renderDetail(currentEmp)" class="btn btn-sm btn-outline-secondary">Отменить</button>
+      </div>
+    </div>
+    <div id="emp-errors" style="display:none;padding:10px 28px 0;"></div>
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      ${eInput('full_name', 'ФИО', e.full_name, true)}
+      <div class="row g-2">
+        <div class="col-6">${eInput('email', 'Email', e.email, false, 'email')}</div>
+        <div class="col-6">${eInput('phone', 'Телефон', e.phone, false)}</div>
+      </div>
+      ${eTextarea('passport_data', 'Паспортные данные', e.passport_data)}
+    </div>
+    <div style="padding:16px 28px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-shrink:0;background:#f8fafc;">
+      <button onclick="saveEmployee()" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Сохранить изменения
+      </button>
+      <button onclick="renderDetail(currentEmp)" class="btn btn-outline-secondary">Отменить</button>
+    </div>`;
+}
+
+function saveEmployee() {
+  const panel = document.getElementById('emp-detail');
+  const data = {};
+  panel.querySelectorAll('input.ef[name], textarea.ef[name]').forEach(el => {
+    data[el.name] = el.value;
+  });
+  fetch('/employees/' + currentEmpId + '/update/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if (resp.errors) {
+      const box = document.getElementById('emp-errors');
+      box.innerHTML = `<div class="alert alert-danger py-2">${esc(Object.values(resp.errors).flat().join('; '))}</div>`;
+      box.style.display = 'block';
+      return;
+    }
+    currentEmp = resp;
+    const item = document.querySelector('.emp-item[data-id="' + currentEmpId + '"]');
+    if (item) item.querySelector('.emp-item-name').textContent = resp.full_name;
+    window._isDirty = false; window._isEditing = false;
+    showToast('Сотрудник сохранён');
+    renderDetail(resp);
+  })
+  .catch(() => alert('Ошибка соединения с сервером'));
+}
+
+/* ── Сортировка ──────────────────────────────── */
+let _empSortAsc = true;
+function sortEmpList() {
+  _empSortAsc = !_empSortAsc;
+  document.getElementById('emp-sort-btn').innerHTML =
+    _empSortAsc ? '<i class="bi bi-sort-alpha-down"></i>' : '<i class="bi bi-sort-alpha-up"></i>';
+  const container = document.getElementById('emp-list-scroll');
+  Array.from(container.querySelectorAll('.emp-item'))
+    .sort((a,b) => _empSortAsc
+      ? a.dataset.name.localeCompare(b.dataset.name,'ru')
+      : b.dataset.name.localeCompare(a.dataset.name,'ru'))
+    .forEach(i => container.appendChild(i));
+}
+
+/* ── isDirty ─────────────────────────────────── */
+const _OrigRenderEditModeEmp = renderEditMode;
+renderEditMode = function() {
+  _OrigRenderEditModeEmp();
+  window._isEditing = true; window._isDirty = false;
+  setTimeout(() => {
+    document.querySelectorAll('#emp-detail input.ef,#emp-detail select.ef,#emp-detail textarea.ef')
+      .forEach(el => el.addEventListener('input', () => { window._isDirty = true; }));
+  }, 60);
+};
+
+/* ── Keyboard hooks ──────────────────────────── */
+window._onKbEsc  = () => { if (window._isEditing) { window._isDirty=false; window._isEditing=false; renderDetail(currentEmp); } };
+window._onKbSave = () => { if (window._isEditing) saveEmployee(); };
+window._onKbDown = () => {
+  const items = [...document.querySelectorAll('.emp-item')].filter(i=>i.style.display!=='none');
+  const next = items[items.findIndex(i=>i.classList.contains('active'))+1];
+  if (next) next.click();
+};
+window._onKbUp = () => {
+  const items = [...document.querySelectorAll('.emp-item')].filter(i=>i.style.display!=='none');
+  const prev = items[items.findIndex(i=>i.classList.contains('active'))-1];
+  if (prev) prev.click();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const selectId = new URLSearchParams(window.location.search).get('select');
+  if (selectId) {
+    const el = document.querySelector('.emp-item[data-id="' + selectId + '"]');
+    if (el) { loadEmployee(parseInt(selectId), el); el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  }
+});
+</script>
+{% endblock %}

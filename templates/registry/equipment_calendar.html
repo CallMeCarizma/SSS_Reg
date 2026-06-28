@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm" style="border-radius:18px;overflow:hidden;min-height:76vh;">
+  <div class="card-body p-0" style="display:flex;flex-direction:column;min-height:76vh;">
+
+    <!-- Шапка с навигацией -->
+    <div style="padding:20px 28px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:16px;">
+      <button onclick="prevMonth()" style="border:1px solid #e5e7eb;background:#fff;border-radius:9px;padding:6px 14px;cursor:pointer;font-size:.95rem;color:#374151;">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <div style="flex:1;text-align:center;">
+        <span id="cal-month-label" style="font-size:1.1rem;font-weight:800;color:#18212f;"></span>
+      </div>
+      <button onclick="nextMonth()" style="border:1px solid #e5e7eb;background:#fff;border-radius:9px;padding:6px 14px;cursor:pointer;font-size:.95rem;color:#374151;">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+      <button onclick="goToday()" style="border:1px solid #c7d2fe;background:#eef2ff;border-radius:9px;padding:6px 16px;cursor:pointer;font-size:.85rem;font-weight:700;color:#4f46e5;">Сегодня</button>
+    </div>
+
+    <!-- Дни недели -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #e5e7eb;background:#f8fafc;">
+      {% for d in "ПВСЧПСВ" %}{% endfor %}
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ПН</div>
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ВТ</div>
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">СР</div>
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ЧТ</div>
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ПТ</div>
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">СБ</div>
+      <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ВС</div>
+    </div>
+
+    <!-- Сетка дней -->
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);flex:1;"></div>
+
+    <!-- Список поверок в месяце -->
+    <div id="cal-list" style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#f8fafc;"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const EVENTS = {{ events_json|safe }};
+const TODAY  = '{{ today }}';
+
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const WARN_COLOR = { red:'#ef4444', orange:'#f97316', yellow:'#eab308' };
+
+let curYear, curMonth;
+
+function init() {
+  const t = new Date(TODAY);
+  curYear = t.getFullYear(); curMonth = t.getMonth();
+  render();
+}
+
+function prevMonth() { curMonth--; if (curMonth<0){curMonth=11;curYear--;} render(); }
+function nextMonth() { curMonth++; if (curMonth>11){curMonth=0;curYear++;} render(); }
+function goToday()   { const t=new Date(TODAY); curYear=t.getFullYear(); curMonth=t.getMonth(); render(); }
+
+function render() {
+  document.getElementById('cal-month-label').textContent = MONTHS_RU[curMonth] + ' ' + curYear;
+
+  const firstDay = new Date(curYear, curMonth, 1);
+  const lastDay  = new Date(curYear, curMonth+1, 0);
+  // Понедельник = 0 смещение
+  let startDow = firstDay.getDay(); // 0=Вс, 1=Пн...
+  startDow = startDow === 0 ? 6 : startDow - 1; // приводим к Пн=0
+
+  const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // Группируем события по дате
+  const byDate = {};
+  EVENTS.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startDow + 1;
+    const cell = document.createElement('div');
+    cell.style.cssText = 'min-height:90px;border-right:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6;padding:6px 8px;position:relative;';
+
+    if (dayNum < 1 || dayNum > lastDay.getDate()) {
+      cell.style.background = '#fafafa';
+    } else {
+      const dateStr = curYear + '-' + String(curMonth+1).padStart(2,'0') + '-' + String(dayNum).padStart(2,'0');
+      const isToday = dateStr === TODAY;
+
+      const numEl = document.createElement('div');
+      numEl.style.cssText = 'font-size:.82rem;font-weight:' + (isToday?'800':'600') + ';color:' + (isToday?'#fff':'#374151') + ';width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:' + (isToday?'#0d6efd':'transparent') + ';margin-bottom:4px;';
+      numEl.textContent = dayNum;
+      cell.appendChild(numEl);
+
+      if (byDate[dateStr]) {
+        byDate[dateStr].forEach(ev => {
+          const dot = document.createElement('div');
+          const color = ev.warning ? (WARN_COLOR[ev.warning] || '#9ca3af') : '#9ca3af';
+          dot.style.cssText = 'font-size:.72rem;font-weight:600;color:#18212f;padding:2px 5px;border-radius:5px;background:' + color + '22;border-left:3px solid ' + color + ';margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;';
+          dot.textContent = ev.title;
+          dot.title = ev.title + ' — ' + ev.type + ' (' + ev.date + ')';
+          dot.onclick = () => { window.location = ev.url; };
+          cell.appendChild(dot);
+        });
+      }
+    }
+    grid.appendChild(cell);
+  }
+
+  // Список поверок в месяце
+  const prefix = curYear + '-' + String(curMonth+1).padStart(2,'0') + '-';
+  const monthEvents = EVENTS.filter(e => e.date.startsWith(prefix));
+  const list = document.getElementById('cal-list');
+  if (!monthEvents.length) {
+    list.innerHTML = '<div style="color:#9ca3af;font-size:.87rem;text-align:center;padding:8px 0;">Поверок в этом месяце нет</div>';
+    return;
+  }
+  list.innerHTML = '<div style="font-size:.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Поверки в ' + MONTHS_RU[curMonth] + '</div>'
+    + monthEvents.map(ev => {
+      const color = ev.warning ? (WARN_COLOR[ev.warning] || '#9ca3af') : '#9ca3af';
+      return `<div onclick="window.location='${ev.url}'" style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:#fff;border:1px solid #e5e7eb;margin-bottom:6px;cursor:pointer;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:.87rem;color:#18212f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ev.title}</div>
+          <div style="font-size:.75rem;color:#6b7280;">${ev.type}</div>
+        </div>
+        <div style="font-size:.85rem;font-weight:700;color:${color};flex-shrink:0;">${ev.date.split('-').reverse().join('.')}</div>
+      </div>`;
+    }).join('');
+}
+
+init();
+</script>
+{% endblock %}

@@ -1,0 +1,593 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Объекты{% endblock %}
+{% block title %}Объекты{% endblock %}
+
+{% block content %}
+{{ all_equipment|json_script:"all-equipment-data" }}
+{{ eq_type_choices|json_script:"eq-types-obj-data" }}
+{{ all_docs|json_script:"all-docs-data" }}
+{{ doc_type_choices|json_script:"doc-types-obj-data" }}
+{{ all_contractors|json_script:"all-contractors-data" }}
+{{ all_employees|json_script:"all-employees-data" }}
+
+<div class="card border-0 shadow-sm" style="min-height: 76vh; overflow: hidden; border-radius: 18px;">
+  <div class="d-flex" style="min-height: 76vh;">
+
+    <!-- Левая колонка: перечень объектов -->
+    <div style="width: 400px; min-width: 400px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: 14px 16px; border-bottom: 1px solid #e5e7eb;">
+        <form method="get" class="d-flex gap-2">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 pe-1">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" name="q"
+                   value="{{ q }}" placeholder="Поиск по объектам">
+          </div>
+          <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          <a href="/objects/create/" class="btn btn-primary flex-shrink-0" title="Добавить объект">
+            <i class="bi bi-plus-circle"></i>
+          </a>
+        </form>
+      </div>
+
+      <div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:6px;">
+        <button class="obj-chip active" data-f="all"     onclick="applyObjFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;">Все</button>
+        <button class="obj-chip"        data-f="warn-eq" onclick="applyObjFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;">⚠ Поверка</button>
+        <button onclick="sortObjList()" title="Сортировка А→Я / Я→А" style="margin-left:auto;border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:.8rem;color:#6b7280;" id="obj-sort-btn"><i class="bi bi-sort-alpha-down"></i></button>
+      </div>
+
+      <div style="overflow-y: auto; flex: 1;" id="obj-list-scroll">
+        {% for obj in items %}
+        <div class="obj-item" data-id="{{ obj.id }}" data-name="{{ obj.name|lower }}"
+             data-status="{{ obj.status }}" data-opo="{{ obj.is_opo|yesno:'1,0' }}"
+             data-warn-eq="{% if obj.id in objs_with_expiring_eq %}1{% else %}0{% endif %}"
+             onclick="_checkUnsaved(function(){loadObject({{ obj.id }}, document.querySelector('.obj-item[data-id=\'{{ obj.id }}\']'))})"
+             style="padding: 13px 18px; border-bottom: 1px solid #e5e7eb; cursor: pointer; border-left: 3px solid transparent; transition: background 0.12s;">
+          <div style="font-size: 0.7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">#{{ obj.id }}</div>
+          <div class="obj-item-name" style="font-weight: 700; color: #18212f; font-size: 0.92rem; margin-bottom: 2px; line-height: 1.3;">{{ obj.name }}</div>
+          <div class="obj-item-contact" style="font-size: 0.82rem; color: #6b7280;">{{ obj.contractor.name|default:"—" }}</div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted p-5">
+          <i class="bi bi-buildings" style="font-size: 2.2rem; opacity: 0.3; display: block; margin-bottom: 8px;"></i>
+          Объектов не найдено
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Правая колонка: паспорт / редактор объекта -->
+    <div class="flex-grow-1 d-flex flex-column" id="obj-detail" style="overflow-y: auto; background: #fff;">
+      <div class="m-auto text-center text-muted" style="padding: 80px 32px;">
+        <i class="bi bi-arrow-left-circle" style="font-size: 3rem; opacity: 0.25; display: block; margin-bottom: 12px;"></i>
+        Выберите объект из списка слева
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.obj-item:hover  { background: #f8fafc; }
+.obj-item.active { background: #eff6ff !important; border-left-color: #0d6efd !important; }
+.ef { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 10px;
+      font-weight: 600; color: #18212f; font-size: 0.9rem; background: #fff; font-family: inherit; }
+.ef:focus { outline: none; border-color: #86b7fe; box-shadow: 0 0 0 3px rgba(13,110,253,.12); }
+.eq-row  { transition: filter 0.12s, box-shadow 0.12s; }
+.eq-row:hover  { filter: brightness(0.96); box-shadow: 0 1px 5px rgba(0,0,0,0.07); }
+.doc-row { transition: filter 0.12s, box-shadow 0.12s; }
+.doc-row:hover { filter: brightness(0.96); box-shadow: 0 1px 5px rgba(0,0,0,0.07); }
+</style>
+
+<script>
+const ALL_EQUIPMENT  = JSON.parse(document.getElementById('all-equipment-data').textContent);
+const EQ_TYPES_OBJ   = JSON.parse(document.getElementById('eq-types-obj-data').textContent);
+const ALL_DOCS       = JSON.parse(document.getElementById('all-docs-data').textContent);
+const DOC_TYPES_OBJ  = JSON.parse(document.getElementById('doc-types-obj-data').textContent);
+const ALL_CONTRACTORS = JSON.parse(document.getElementById('all-contractors-data').textContent);
+const ALL_EMPLOYEES   = JSON.parse(document.getElementById('all-employees-data').textContent);
+
+/* ── Глобальное состояние ───────────────────── */
+let currentId  = null;
+let currentObj = null;
+
+/* ── Утилиты ────────────────────────────────── */
+function esc(s) {
+  if (s === null || s === undefined || s === '') return '—';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+/* ── Стили полей ────────────────────────────── */
+const FS = 'padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid #e5e7eb;';
+const FL = 'font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:4px;';
+const FV = 'font-weight:600;color:#18212f;font-size:.9rem;';
+
+const WARN_ROW_STYLE = {
+  red:    'background:#fef2f2;border:1px solid #fca5a5;',
+  orange: 'background:#fff7ed;border:1px solid #fdba74;',
+  yellow: 'background:#fefce8;border:1px solid #fde68a;',
+};
+const WARN_DOT = {
+  red:    '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:6px;flex-shrink:0;"></span>',
+  orange: '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;margin-right:6px;flex-shrink:0;"></span>',
+  yellow: '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#eab308;margin-right:6px;flex-shrink:0;"></span>',
+};
+
+/* ── Просмотр: карточка поля ────────────────── */
+function field(label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div><div style="${FV}">${esc(value)}</div></div>`;
+}
+function fieldClickable(label, name, url) {
+  const clickable = name ? `ondblclick="window.location='${url}'" title="Двойной клик — перейти" style="${FS}cursor:pointer;"` : `style="${FS}"`;
+  const val = name
+    ? `<span>${esc(name)}</span>`
+    : `<span style="color:#9ca3af;">—</span>`;
+  return `<div ${clickable}><div style="${FL}">${label}</div><div style="${FV}">${val}</div></div>`;
+}
+
+/* ── Редактирование: поля ввода ─────────────── */
+function eInput(name, label, value, required) {
+  return `<div style="${FS}">
+    <div style="${FL}">${label}${required ? ' <span style="color:#ef4444">*</span>' : ''}</div>
+    <input class="ef" type="text" name="${name}" value="${escAttr(value ?? '')}">
+  </div>`;
+}
+function eSelect(name, label, current) {
+  const opts = [
+    ['active',  'Договор подписан'],
+    ['invalid', 'Договор не действителен'],
+    ['delete',  'На удаление'],
+  ].map(([v,t]) => `<option value="${v}"${v===current?' selected':''}>${t}</option>`).join('');
+  return `<div style="${FS}">
+    <div style="${FL}">${label}</div>
+    <select class="ef" name="${name}">${opts}</select>
+  </div>`;
+}
+function eEntitySelect(name, label, options, currentId, createUrl, createLabel) {
+  const opts = `<option value="">— Не привязывать —</option>` +
+    options.map(o => `<option value="${o.id}"${o.id === currentId ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
+  return `<div style="${FS}">
+    <div style="${FL}">${label}</div>
+    <select class="ef" name="${name}">${opts}</select>
+    <a href="${createUrl}" style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:.8rem;color:#4f46e5;text-decoration:none;" target="_blank">
+      <i class="bi bi-plus-circle"></i> ${createLabel}
+    </a>
+  </div>`;
+}
+function eCheck(name, label, checked) {
+  return `<div style="${FS};display:flex;align-items:center;gap:10px;">
+    <input type="checkbox" id="ef-${name}" name="${name}" style="width:18px;height:18px;cursor:pointer;"${checked?' checked':''}>
+    <label for="ef-${name}" style="font-weight:700;color:#18212f;margin:0;cursor:pointer;">${label}</label>
+  </div>`;
+}
+
+/* ── Секция оборудования объекта ─────────────── */
+function renderEquipmentSection(equipment, objectId, editable) {
+  const WARN_COLOR = {
+    red:    '#dc2626',
+    orange: '#ea580c',
+    yellow: '#ca8a04',
+  };
+  const WARN_BG = {
+    red:    '#fef2f2',
+    orange: '#fff7ed',
+    yellow: '#fefce8',
+  };
+
+  const list = equipment.length
+    ? equipment.map(e => {
+        const dotColor = WARN_COLOR[e.verification_warning] || '#d1d5db';
+        const rowBg    = WARN_BG[e.verification_warning]   || '#fff';
+        const unbindBtn = editable
+          ? `<button onclick="unbindEquipment(${e.link_id},${objectId})"
+                     style="border:none;background:none;color:#9ca3af;padding:2px 6px;cursor:pointer;flex-shrink:0;line-height:1;" title="Отвязать">
+               <i class="bi bi-x-lg" style="font-size:.8rem;"></i>
+             </button>`
+          : '';
+        return `<div class="eq-row" ondblclick="window.location='/equipment/?select=${e.equipment_id}'"
+                     style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;background:${rowBg};border:1px solid ${e.verification_warning ? dotColor+'44' : '#e5e7eb'};cursor:${editable?'default':'pointer'};"
+                     title="Двойной клик — открыть в оборудовании">
+          <span style="width:9px;height:9px;border-radius:50%;background:${dotColor};flex-shrink:0;display:inline-block;"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:.87rem;color:#18212f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.name)}</div>
+            <div style="font-size:.74rem;color:#6b7280;margin-top:1px;">${esc(e.type_display)} · Поверка: <span style="color:${dotColor};font-weight:600;">${esc(e.next_verification_date_display)}</span></div>
+          </div>
+          ${unbindBtn}
+        </div>`;
+      }).join('')
+    : `<div style="color:#9ca3af;font-size:.88rem;text-align:center;padding:16px 0;">
+         <i class="bi bi-tools" style="font-size:1.3rem;opacity:.35;display:block;margin-bottom:4px;"></i>
+         Оборудование не привязано
+       </div>`;
+
+  const boundIds = new Set(equipment.map(e => e.equipment_id));
+  const available = ALL_EQUIPMENT.filter(e => !boundIds.has(e.id));
+
+  const eqTypeOpts = EQ_TYPES_OBJ.map(t =>
+    `<option value="${escAttr(t.value)}">${esc(t.label)}</option>`
+  ).join('');
+
+  const addRow = editable
+    ? `<div style="padding-top:10px;border-top:1px dashed #c7d2fe;margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+         ${available.length > 0 ? `
+         <div style="display:flex;gap:8px;align-items:center;">
+           <select id="eq-add-sel-${objectId}" style="flex:1;border:1px solid #c7d2fe;border-radius:8px;padding:6px 10px;font-size:.85rem;font-weight:600;color:#18212f;background:#fff;">
+             <option value="">— Выбрать существующее —</option>
+             ${available.map(e=>`<option value="${e.id}">${esc(e.name)} (${esc(e.type_display)})</option>`).join('')}
+           </select>
+           <button onclick="bindEquipment(${objectId})" class="btn btn-sm btn-primary flex-shrink-0">
+             <i class="bi bi-plus-lg"></i> Добавить
+           </button>
+         </div>` : ''}
+         <a href="/equipment/create/?object_id=${objectId}" class="btn btn-sm btn-outline-primary align-self-start">
+           <i class="bi bi-plus-circle"></i> Создать новое оборудование
+         </a>
+       </div>`
+    : '';
+
+  const countBadge = equipment.length
+    ? `<span style="background:#4f46e5;color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">${equipment.length}</span>`
+    : `<span style="background:#e0e7ff;color:#4f46e5;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">0</span>`;
+
+  return `<div style="border-radius:14px;border:2px solid #c7d2fe;overflow:hidden;margin-top:4px;">
+    <div style="background:#eef2ff;padding:11px 14px;display:flex;align-items:center;gap:8px;">
+      <i class="bi bi-tools" style="color:#4f46e5;font-size:1rem;"></i>
+      <span style="font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#3730a3;flex:1;">Оборудование объекта</span>
+      ${countBadge}
+    </div>
+    <div style="padding:12px;display:flex;flex-direction:column;gap:6px;">
+      ${list}${addRow}
+    </div>
+  </div>`;
+}
+
+async function unbindEquipment(linkId, objectId) {
+  await fetch('/object-equipment/' + linkId + '/unbind/', {
+    method: 'POST', headers: {'X-CSRFToken': getCsrf()}
+  });
+  loadObject(objectId, document.querySelector('.obj-item[data-id="' + objectId + '"]'));
+}
+
+async function bindEquipment(objectId) {
+  const sel = document.getElementById('eq-add-sel-' + objectId);
+  if (!sel?.value) return;
+  const resp = await fetch('/object-equipment/bind/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify({object_id: objectId, equipment_id: parseInt(sel.value)}),
+  });
+  const data = await resp.json();
+  if (data.error) { alert(data.error); return; }
+  loadObject(objectId, document.querySelector('.obj-item[data-id="' + objectId + '"]'));
+}
+
+async function createAndBindEquipment(objectId) {
+  const name = document.getElementById('new-eq-name-' + objectId)?.value?.trim();
+  if (!name) { alert('Укажите наименование оборудования'); return; }
+  const payload = {
+    name,
+    type:               document.getElementById('new-eq-type-' + objectId)?.value || 'other',
+    checking_frequency: document.getElementById('new-eq-freq-' + objectId)?.value || '',
+    verification_date:  document.getElementById('new-eq-date-' + objectId)?.value || '',
+  };
+  const resp = await fetch('/objects/' + objectId + '/equipment-create-bind/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (data.errors || data.error) { alert(data.error || 'Ошибка создания'); return; }
+  loadObject(objectId, document.querySelector('.obj-item[data-id="' + objectId + '"]'));
+}
+
+/* ── Секция документов объекта ───────────────── */
+function renderDocumentsSection(documents, objectId, editable) {
+  const DOC_COLOR = {
+    contract:'#2563eb', act:'#d97706', passport:'#059669',
+    certificate:'#0891b2', protocol:'#7c3aed', other:'#6b7280',
+  };
+
+  const list = documents.length
+    ? documents.map(d => {
+        const color = DOC_COLOR[d.doc_type] || '#6b7280';
+        const attBadge = d.attachment_count > 0
+          ? `<span style="background:#f3f4f6;color:#374151;font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:99px;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;">
+               <i class="bi bi-paperclip" style="font-size:.65rem;"></i>${d.attachment_count}
+             </span>`
+          : '';
+        return `<div class="doc-row" ondblclick="window.location='/documents/?select=${d.id}'"
+                     style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;background:#fff;border:1px solid #e5e7eb;cursor:pointer;"
+                     title="Двойной клик — открыть в документах">
+          <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block;"></span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:.87rem;color:#18212f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.title)}</div>
+            <div style="font-size:.74rem;color:#6b7280;margin-top:1px;">${esc(d.doc_type_display)} · ${esc(d.doc_date_display)}</div>
+          </div>
+          ${attBadge}
+        </div>`;
+      }).join('')
+    : `<div style="color:#9ca3af;font-size:.88rem;text-align:center;padding:16px 0;">
+         <i class="bi bi-file-earmark" style="font-size:1.3rem;opacity:.35;display:block;margin-bottom:4px;"></i>
+         Документов нет
+       </div>`;
+
+  let editControls = '';
+  if (editable) {
+    const otherDocs = ALL_DOCS.filter(d => d.object_id !== objectId);
+    editControls = `
+      <div style="padding-top:10px;border-top:1px dashed #6ee7b7;margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+        ${otherDocs.length > 0 ? `
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="doc-add-sel-${objectId}"
+                  style="flex:1;border:1px solid #6ee7b7;border-radius:8px;padding:6px 10px;font-size:.85rem;font-weight:600;color:#18212f;background:#fff;">
+            <option value="">— Выбрать существующее —</option>
+            ${otherDocs.map(d=>`<option value="${d.id}">${esc(d.title)} (${esc(d.object_name)})</option>`).join('')}
+          </select>
+          <button onclick="bindDocument(${objectId})" class="btn btn-sm btn-primary flex-shrink-0">
+            <i class="bi bi-plus-lg"></i> Добавить
+          </button>
+        </div>` : ''}
+        <a href="/documents/create/?object_id=${objectId}" class="btn btn-sm btn-outline-success align-self-start">
+          <i class="bi bi-plus-circle"></i> Создать новый документ
+        </a>
+      </div>`;
+  }
+
+  const countBadge = documents.length
+    ? `<span style="background:#059669;color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">${documents.length}</span>`
+    : `<span style="background:#d1fae5;color:#059669;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;">0</span>`;
+
+  return `<div style="border-radius:14px;border:2px solid #6ee7b7;overflow:hidden;margin-top:4px;">
+    <div style="background:#ecfdf5;padding:11px 14px;display:flex;align-items:center;gap:8px;">
+      <i class="bi bi-file-earmark-text" style="color:#059669;font-size:1rem;"></i>
+      <span style="font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#065f46;flex:1;">Документы объекта</span>
+      ${countBadge}
+    </div>
+    <div style="padding:12px;display:flex;flex-direction:column;gap:6px;">
+      ${list}${editControls}
+    </div>
+  </div>`;
+}
+
+async function bindDocument(objectId) {
+  const sel = document.getElementById('doc-add-sel-' + objectId);
+  if (!sel?.value) return;
+  const docId = parseInt(sel.value);
+  const resp = await fetch('/documents/' + docId + '/assign-object/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify({object_id: objectId}),
+  });
+  const data = await resp.json();
+  if (data.error) { alert(data.error); return; }
+  const entry = ALL_DOCS.find(d => d.id === docId);
+  if (entry) entry.object_id = objectId;
+  loadObject(objectId, document.querySelector('.obj-item[data-id="' + objectId + '"]'));
+}
+
+/* ── Загрузка объекта ───────────────────────── */
+function loadObject(id, el) {
+  currentId = id;
+  document.querySelectorAll('.obj-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  fetch('/objects/' + id + '/detail/')
+    .then(r => r.json())
+    .then(obj => { currentObj = obj; renderDetail(obj); })
+    .catch(() => {
+      document.getElementById('obj-detail').innerHTML =
+        '<div class="m-auto text-center text-muted p-5"><i class="bi bi-exclamation-circle"></i> Ошибка загрузки</div>';
+    });
+}
+
+/* ── Режим просмотра ────────────────────────── */
+function renderDetail(obj) {
+  const opoBadge = obj.is_opo ? '<span class="badge bg-danger ms-2">ОПО</span>' : '';
+
+  document.getElementById('obj-detail').innerHTML = `
+    <div style="padding:24px 28px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-shrink:0;">
+      <div>
+        <h4 style="font-size:1.1rem;font-weight:800;margin:0 0 8px;color:#18212f;line-height:1.3;">${esc(obj.name)}</h4>
+        <div>
+          <span class="badge ${obj.status_class}">${esc(obj.status_display)}</span>
+          ${opoBadge}
+        </div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+          <i class="bi bi-pencil-square"></i> Изменить
+        </button>
+        <a href="/objects/${obj.id}/delete/" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash3"></i>
+        </a>
+      </div>
+    </div>
+
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      ${field('Полное наименование', obj.full_name)}
+      ${field('Адрес', obj.address)}
+      <div class="row g-2">
+        <div class="col-6">${fieldClickable('Контрагент', obj.contractor_name, '/contractors/?select=' + obj.contractor_id)}</div>
+        <div class="col-6">${fieldClickable('Ответственный', obj.responsible_name, '/employees/?select=' + obj.responsible_id)}</div>
+      </div>
+      ${renderEquipmentSection(obj.equipment, obj.id, false)}
+      ${renderDocumentsSection(obj.documents, obj.id, false)}
+    </div>
+
+    <div style="padding:18px 28px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-wrap:wrap;flex-shrink:0;background:#f8fafc;">
+      <a href="/equipment/?object_id=${obj.id}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-box-arrow-up-right me-1"></i> Открыть всё оборудование
+      </a>
+      <a href="/documents/?object_id=${obj.id}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-box-arrow-up-right me-1"></i> Открыть все документы
+      </a>
+    </div>`;
+}
+
+/* ── Режим редактирования ───────────────────── */
+function renderEditMode() {
+  const obj = currentObj;
+  if (!obj) return;
+
+  document.getElementById('obj-detail').innerHTML = `
+    <div style="padding:20px 28px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0;background:#fff8f0;">
+      <div>
+        <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;">● Режим редактирования</span>
+        <div style="font-weight:800;color:#18212f;font-size:1rem;margin-top:2px;">${esc(obj.name)}</div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="saveObject()" class="btn btn-sm btn-primary">
+          <i class="bi bi-check2-circle"></i> Сохранить
+        </button>
+        <button onclick="renderDetail(currentObj)" class="btn btn-sm btn-outline-secondary">
+          Отменить
+        </button>
+      </div>
+    </div>
+
+    <div id="edit-errors" style="display:none;padding:10px 28px 0;"></div>
+
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      ${eInput('name',      'Наименование',        obj.name,      true)}
+      ${eInput('full_name', 'Полное наименование', obj.full_name, false)}
+      ${eInput('address',   'Адрес',               obj.address,   false)}
+      <div class="row g-2">
+        <div class="col-6">${eEntitySelect('contractor_id', 'Контрагент', ALL_CONTRACTORS, obj.contractor_id, '/contractors/create/', 'Создать нового контрагента')}</div>
+        <div class="col-6">${eEntitySelect('responsible_id', 'Ответственный', ALL_EMPLOYEES, obj.responsible_id, '/employees/create/', 'Добавить сотрудника')}</div>
+      </div>
+      ${eSelect('status', 'Состояние', obj.status)}
+      ${eCheck('is_opo', 'Объект является ОПО', obj.is_opo)}
+      ${renderEquipmentSection(obj.equipment, obj.id, true)}
+      ${renderDocumentsSection(obj.documents, obj.id, true)}
+    </div>
+
+    <div style="padding:16px 28px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-shrink:0;background:#f8fafc;">
+      <button onclick="saveObject()" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Сохранить изменения
+      </button>
+      <button onclick="renderDetail(currentObj)" class="btn btn-outline-secondary">
+        Отменить
+      </button>
+    </div>`;
+}
+
+/* ── Сохранение ─────────────────────────────── */
+function saveObject() {
+  const panel = document.getElementById('obj-detail');
+  const data  = {};
+
+  panel.querySelectorAll('input.ef[name], select.ef[name]').forEach(el => {
+    data[el.name] = el.value;
+  });
+  const cb = panel.querySelector('input[type=checkbox][name=is_opo]');
+  data['is_opo'] = cb ? cb.checked : false;
+
+  fetch('/objects/' + currentId + '/update/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrf(),
+    },
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if (resp.errors) {
+      const box = document.getElementById('edit-errors');
+      const msgs = Object.values(resp.errors).flat().join('; ');
+      box.innerHTML = `<div class="alert alert-danger py-2">${esc(msgs)}</div>`;
+      box.style.display = 'block';
+      return;
+    }
+    currentObj = resp;
+    const item = document.querySelector('.obj-item[data-id="' + currentId + '"]');
+    if (item) {
+      item.querySelector('.obj-item-name').textContent    = resp.name;
+      item.querySelector('.obj-item-contact').textContent = resp.contractor_name || '—';
+    }
+    window._isDirty = false; window._isEditing = false;
+    showToast('Объект сохранён');
+    renderDetail(resp);
+  })
+  .catch(() => {
+    const box = document.getElementById('edit-errors');
+    if (box) { box.innerHTML = '<div class="alert alert-danger py-2">Ошибка соединения с сервером</div>'; box.style.display='block'; }
+  });
+}
+
+/* ── Фильтры ─────────────────────────────────── */
+function applyObjFilter(btn) {
+  document.querySelectorAll('.obj-chip').forEach(b => {
+    b.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;';
+  });
+  btn.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;';
+  const f = btn.dataset.f;
+  document.querySelectorAll('.obj-item').forEach(item => {
+    const show = f === 'all'     ? true
+               : f === 'opo'     ? item.dataset.opo === '1'
+               : f === 'warn-eq' ? item.dataset.warnEq === '1'
+               : item.dataset.status === f;
+    item.style.display = show ? '' : 'none';
+  });
+}
+
+/* ── Сортировка ──────────────────────────────── */
+let _objSortAsc = true;
+function sortObjList() {
+  _objSortAsc = !_objSortAsc;
+  document.getElementById('obj-sort-btn').innerHTML =
+    _objSortAsc ? '<i class="bi bi-sort-alpha-down"></i>' : '<i class="bi bi-sort-alpha-up"></i>';
+  const container = document.getElementById('obj-list-scroll');
+  Array.from(container.querySelectorAll('.obj-item'))
+    .sort((a,b) => _objSortAsc
+      ? a.dataset.name.localeCompare(b.dataset.name,'ru')
+      : b.dataset.name.localeCompare(a.dataset.name,'ru'))
+    .forEach(i => container.appendChild(i));
+}
+
+/* ── Keyboard hooks ──────────────────────────── */
+window._onKbEsc  = () => { if (window._isEditing) { window._isDirty=false; window._isEditing=false; renderDetail(currentObj); } };
+window._onKbSave = () => { if (window._isEditing) saveObject(); };
+window._onKbDown = () => {
+  const items = [...document.querySelectorAll('.obj-item')].filter(i=>i.style.display!=='none');
+  const next = items[items.findIndex(i=>i.classList.contains('active'))+1];
+  if (next) next.click();
+};
+window._onKbUp = () => {
+  const items = [...document.querySelectorAll('.obj-item')].filter(i=>i.style.display!=='none');
+  const prev = items[items.findIndex(i=>i.classList.contains('active'))-1];
+  if (prev) prev.click();
+};
+
+/* ── isDirty: отслеживание изменений ─────────── */
+const _OrigRenderEditMode = renderEditMode;
+renderEditMode = function () {
+  _OrigRenderEditMode();
+  window._isEditing = true; window._isDirty = false;
+  setTimeout(() => {
+    document.querySelectorAll('#obj-detail input.ef,#obj-detail select.ef,#obj-detail textarea.ef')
+      .forEach(el => el.addEventListener('input', () => { window._isDirty = true; }));
+  }, 60);
+};
+
+/* ── Авто-выбор по ?select= ─────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  const id = new URLSearchParams(window.location.search).get('select');
+  if (id) {
+    const el = document.querySelector('.obj-item[data-id="'+id+'"]');
+    if (el) { loadObject(parseInt(id), el); el.scrollIntoView({block:'nearest'}); }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,458 @@
+{% extends 'base.html' %}
+{% load registry_extras %}
+
+{% block page_title %}{{ title }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+{{ eq_type_choices|json_script:"eq-types-data" }}
+{{ all_objects|json_script:"all-objects-data" }}
+
+<div class="card border-0 shadow-sm" style="min-height: 76vh; overflow: hidden; border-radius: 18px;">
+  <div class="d-flex" style="min-height: 76vh;">
+
+    <!-- Левая колонка: список оборудования -->
+    <div style="width: 400px; min-width: 400px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: 14px 16px; border-bottom: 1px solid #e5e7eb;">
+        <form method="get" class="d-flex gap-2">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 pe-1">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" name="q"
+                   value="{{ q }}" placeholder="Поиск по оборудованию">
+          </div>
+          <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          <a href="/equipment/create/" class="btn btn-primary flex-shrink-0" title="Добавить оборудование">
+            <i class="bi bi-plus-circle"></i>
+          </a>
+        </form>
+      </div>
+
+      <div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:6px;">
+        <button class="eq-chip active" data-f="all"  onclick="applyEqFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;">Все</button>
+        <button class="eq-chip"        data-f="warn" onclick="applyEqFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;">⚠ Истекает</button>
+        <button onclick="sortEqList()" id="eq-sort-btn" title="Сортировка" style="margin-left:auto;border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:.8rem;color:#6b7280;"><i class="bi bi-sort-alpha-down"></i></button>
+      </div>
+
+      <div style="overflow-y: auto; flex: 1;" id="eq-list-scroll">
+        {% for eq in items %}
+        <div class="eq-item {{ eq.next_verification_date|verification_warning }}" data-id="{{ eq.id }}"
+             data-name="{{ eq.name|lower }}" data-type="{{ eq.type }}"
+             data-warn="{% if eq.next_verification_date %}{% with eq.next_verification_date|date:'Y-m-d' as d %}1{% endwith %}{% else %}0{% endif %}"
+             onclick="_checkUnsaved(function(){loadEq({{ eq.id }}, document.querySelector('.eq-item[data-id=\'{{ eq.id }}\']'))})"
+             style="padding: 13px 18px; border-bottom: 1px solid #e5e7eb; cursor: pointer; border-left: 3px solid transparent; transition: background 0.12s;">
+          <div style="font-size: 0.7rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">#{{ eq.id }}</div>
+          <div class="eq-item-name" style="font-weight: 700; color: #18212f; font-size: 0.92rem; margin-bottom: 3px; line-height: 1.3;">{{ eq.name }}</div>
+          <div style="font-size: 0.78rem; font-weight: 600; color: #6b7280;">{{ eq.get_type_display }}</div>
+          {% if eq.next_verification_date %}
+          <div style="font-size: 0.76rem; color: #9ca3af; margin-top: 2px;">
+            Поверка: {{ eq.next_verification_date|date:"d.m.Y" }}
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="text-center text-muted p-5">
+          <i class="bi bi-tools" style="font-size: 2.2rem; opacity: 0.3; display: block; margin-bottom: 8px;"></i>
+          Оборудования не найдено
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Правая колонка: паспорт / редактор оборудования -->
+    <div class="flex-grow-1 d-flex flex-column" id="eq-detail" style="overflow-y: auto; background: #fff;">
+      <div class="m-auto text-center text-muted" style="padding: 80px 32px;">
+        <i class="bi bi-arrow-left-circle" style="font-size: 3rem; opacity: 0.25; display: block; margin-bottom: 12px;"></i>
+        Выберите оборудование из списка слева
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.eq-item:hover        { background: #f8fafc; }
+.eq-item.active       { background: #eff6ff !important; border-left-color: #0d6efd !important; }
+.eq-item.warn-yellow  { background: #fefce8; border-left-color: #eab308; }
+.eq-item.warn-orange  { background: #fff7ed; border-left-color: #f97316; }
+.eq-item.warn-red     { background: #fef2f2; border-left-color: #ef4444; }
+.ef { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 10px;
+      font-weight: 600; color: #18212f; font-size: 0.9rem; background: #fff; font-family: inherit; }
+.ef:focus { outline: none; border-color: #86b7fe; box-shadow: 0 0 0 3px rgba(13,110,253,.12); }
+</style>
+
+<script>
+const EQ_TYPES   = JSON.parse(document.getElementById('eq-types-data').textContent);
+const ALL_OBJ    = JSON.parse(document.getElementById('all-objects-data').textContent);
+
+let currentEqId = null;
+let currentEq   = null;
+
+/* Автовыбор при переходе с ?select=<id> */
+document.addEventListener('DOMContentLoaded', () => {
+  const selectId = new URLSearchParams(location.search).get('select');
+  if (selectId) {
+    const el = document.querySelector('.eq-item[data-id="' + selectId + '"]');
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      loadEq(parseInt(selectId), el);
+    }
+  }
+});
+
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function esc(s) {
+  if (s === null || s === undefined || s === '') return '—';
+  const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML;
+}
+function escAttr(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const FS = 'padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid #e5e7eb;';
+const FL = 'font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:4px;';
+const FV = 'font-weight:600;color:#18212f;font-size:.9rem;';
+
+const WARN_BADGE = {
+  red:    '<span class="badge bg-danger ms-2">просрочено/≤7 дн.</span>',
+  orange: '<span class="badge bg-warning text-dark ms-2">≤15 дн.</span>',
+  yellow: '<span class="badge" style="background:#d97706;color:#fff;" class="ms-2">≤30 дн.</span>',
+};
+const WARN_FS = {
+  red:    'padding:12px 14px;background:#fef2f2;border-radius:12px;border:1px solid #fca5a5;',
+  orange: 'padding:12px 14px;background:#fff7ed;border-radius:12px;border:1px solid #fdba74;',
+  yellow: 'padding:12px 14px;background:#fefce8;border-radius:12px;border:1px solid #fde68a;',
+};
+
+function field(label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div><div style="${FV}">${esc(value)}</div></div>`;
+}
+function warnField(label, value, warning) {
+  const s = WARN_FS[warning] || FS;
+  const badge = WARN_BADGE[warning] || '';
+  return `<div style="${s}"><div style="${FL}">${label}${badge}</div><div style="${FV}">${esc(value)}</div></div>`;
+}
+function eInput(name, label, value, required) {
+  return `<div style="${FS}"><div style="${FL}">${label}${required?'<span style="color:#ef4444;margin-left:2px">*</span>':''}</div>
+    <input class="ef" type="text" name="${name}" value="${escAttr(value ?? '')}"></div>`;
+}
+function eDate(name, label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div>
+    <input class="ef" type="date" name="${name}" value="${escAttr(value ?? '')}"></div>`;
+}
+function eSelect(name, label, options, current) {
+  const opts = options.map(o =>
+    `<option value="${escAttr(o.value)}"${o.value===current?' selected':''}>${esc(o.label)}</option>`
+  ).join('');
+  return `<div style="${FS}"><div style="${FL}">${label}</div><select class="ef" name="${name}">${opts}</select></div>`;
+}
+
+/* ── Паспорт (файл) ─────────────────────────── */
+function renderPassport(eq, editable) {
+  const current = eq.passport_scan_url
+    ? `<a href="${escAttr(eq.passport_scan_url)}" target="_blank" rel="noopener"
+          class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="margin-bottom:${editable?'8px':'0'};">
+         <i class="bi bi-file-earmark-arrow-down"></i> ${esc(eq.passport_scan_name)}
+       </a>`
+    : `<div style="color:#9ca3af;font-size:.88rem;padding:4px 0 ${editable?'8px':'0'};">Файл не загружен</div>`;
+  const uploadRow = editable ? `
+    <div style="display:flex;gap:8px;align-items:center;padding-top:8px;border-top:1px dashed #e5e7eb;">
+      <input type="file" id="passport-file" accept=".pdf,.jpg,.jpeg,.png"
+             style="flex:1;font-size:.82rem;color:#6b7280;">
+      <button onclick="uploadPassport(${eq.id})" class="btn btn-sm btn-outline-primary flex-shrink-0">
+        <i class="bi bi-upload"></i> Загрузить
+      </button>
+    </div>` : '';
+  return `<div style="${FS}">
+    <div style="${FL}">Скан паспорта</div>
+    ${current}${uploadRow}
+  </div>`;
+}
+
+/* ── Привязанные объекты ─────────────────────── */
+function renderObjects(objects, eqId, editable) {
+  const list = objects.length
+    ? objects.map(o => `
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:5px;">
+          <i class="bi bi-buildings" style="color:#6b7280;flex-shrink:0;"></i>
+          <span style="flex:1;font-weight:600;font-size:.88rem;">${esc(o.object_name)}</span>
+          ${editable ? `<button onclick="unbindFromObject(${o.link_id},${eqId})"
+                  style="border:none;background:none;color:#dc2626;padding:2px 6px;cursor:pointer;flex-shrink:0;" title="Отвязать">
+            <i class="bi bi-x-circle"></i>
+          </button>` : ''}
+        </div>`).join('')
+    : `<div style="color:#9ca3af;font-size:.88rem;padding:4px 0 8px;">Не привязано ни к одному объекту</div>`;
+
+  const boundIds = new Set(objects.map(o => o.object_id));
+  const available = ALL_OBJ.filter(o => !boundIds.has(o.id));
+  const addRow = editable && available.length > 0
+    ? `<div style="display:flex;gap:8px;align-items:center;padding-top:8px;border-top:1px dashed #e5e7eb;margin-top:6px;">
+         <select id="obj-add-sel-${eqId}" class="ef" style="flex:1;font-size:.85rem;">
+           <option value="">— Выбрать объект —</option>
+           ${available.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('')}
+         </select>
+         <button onclick="bindToObject(${eqId})" class="btn btn-sm btn-outline-success flex-shrink-0">
+           <i class="bi bi-plus-circle"></i> Привязать
+         </button>
+       </div>`
+    : '';
+
+  return `<div style="${FS}">
+    <div style="${FL}">Объекты</div>
+    ${list}${addRow}
+  </div>`;
+}
+
+async function unbindFromObject(linkId, eqId) {
+  await fetch('/object-equipment/' + linkId + '/unbind/', {
+    method: 'POST', headers: {'X-CSRFToken': getCsrf()}
+  });
+  loadEq(eqId, document.querySelector('.eq-item[data-id="' + eqId + '"]'));
+}
+
+async function bindToObject(eqId) {
+  const sel = document.getElementById('obj-add-sel-' + eqId);
+  if (!sel?.value) return;
+  const resp = await fetch('/object-equipment/bind/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify({object_id: parseInt(sel.value), equipment_id: eqId}),
+  });
+  const data = await resp.json();
+  if (data.error) { alert(data.error); return; }
+  loadEq(eqId, document.querySelector('.eq-item[data-id="' + eqId + '"]'));
+}
+
+/* ── Загрузка ───────────────────────────────── */
+async function uploadPassport(eqId) {
+  const input = document.getElementById('passport-file');
+  if (!input?.files[0]) return;
+  const fd = new FormData();
+  fd.append('passport_scan', input.files[0]);
+  const resp = await fetch('/equipment/' + eqId + '/upload-passport/', {
+    method: 'POST', headers: {'X-CSRFToken': getCsrf()}, body: fd
+  });
+  const data = await resp.json();
+  if (data.error) { alert(data.error); return; }
+  currentEq = data;
+  renderDetail(data);
+}
+
+function loadEq(id, el) {
+  currentEqId = id;
+  document.querySelectorAll('.eq-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  fetch('/equipment/' + id + '/detail/')
+    .then(r => r.json())
+    .then(eq => { currentEq = eq; renderDetail(eq); })
+    .catch(() => {
+      document.getElementById('eq-detail').innerHTML =
+        '<div class="m-auto text-center text-muted p-5"><i class="bi bi-exclamation-circle"></i> Ошибка загрузки</div>';
+    });
+}
+
+const EQ_TYPE_COLOR = {
+  meter:'bg-info text-dark', sensor:'bg-primary', boiler:'bg-danger',
+  valve:'bg-warning text-dark', other:'bg-secondary'
+};
+
+/* ── Просмотр ───────────────────────────────── */
+function renderDetail(eq) {
+  const nextDateHtml = eq.verification_warning
+    ? warnField('Следующая поверка', eq.next_verification_date_display, eq.verification_warning)
+    : field('Следующая поверка', eq.next_verification_date_display);
+
+  document.getElementById('eq-detail').innerHTML = `
+    <div style="padding:24px 28px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-shrink:0;">
+      <div>
+        <h4 style="font-size:1.05rem;font-weight:800;margin:0 0 8px;color:#18212f;line-height:1.35;">${esc(eq.name)}</h4>
+        <span class="badge ${EQ_TYPE_COLOR[eq.type]||'bg-secondary'}">${esc(eq.type_display)}</span>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+          <i class="bi bi-pencil-square"></i> Изменить
+        </button>
+        <a href="/equipment/${eq.id}/delete/" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash3"></i>
+        </a>
+      </div>
+    </div>
+
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      <div class="row g-2">
+        <div class="col-4">${field('Периодичность', eq.checking_frequency_display)}</div>
+        <div class="col-4">${field('Последняя поверка', eq.verification_date_display)}</div>
+        <div class="col-4">${nextDateHtml}</div>
+      </div>
+      ${renderPassport(eq, false)}
+      ${renderObjects(eq.objects, eq.id, false)}
+    </div>`;
+}
+
+/* ── Редактирование ─────────────────────────── */
+function renderEditMode() {
+  const eq = currentEq;
+  if (!eq) return;
+
+  document.getElementById('eq-detail').innerHTML = `
+    <div style="padding:20px 28px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0;background:#fff8f0;">
+      <div>
+        <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;">● Режим редактирования</span>
+        <div style="font-weight:800;color:#18212f;font-size:1rem;margin-top:2px;">${esc(eq.name)}</div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="saveEq()" class="btn btn-sm btn-primary">
+          <i class="bi bi-check2-circle"></i> Сохранить
+        </button>
+        <button onclick="renderDetail(currentEq)" class="btn btn-sm btn-outline-secondary">Отменить</button>
+      </div>
+    </div>
+
+    <div id="eq-errors" style="display:none;padding:10px 28px 0;"></div>
+
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      ${eInput('name', 'Наименование', eq.name, true)}
+      ${eSelect('type', 'Тип оборудования', EQ_TYPES, eq.type)}
+      <div class="row g-2">
+        <div class="col-6">
+          <div style="${FS}">
+            <div style="${FL}">Периодичность поверки (дней)</div>
+            <input class="ef" type="number" min="1" name="checking_frequency"
+                   value="${escAttr(eq.checking_frequency ?? '')}"
+                   oninput="autoCalcNextDate()" placeholder="например: 365">
+          </div>
+        </div>
+        <div class="col-6">
+          <div style="${FS}">
+            <div style="${FL}">Дата последней поверки</div>
+            <input class="ef" type="date" name="verification_date"
+                   value="${escAttr(eq.verification_date ?? '')}"
+                   oninput="autoCalcNextDate()">
+          </div>
+        </div>
+      </div>
+      <div style="${FS};opacity:.85;">
+        <div style="${FL}">Следующая поверка <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;">(рассчитывается автоматически)</span></div>
+        <div id="auto-next-date" style="${FV};color:#374151;">${esc(eq.next_verification_date_display)}</div>
+      </div>
+      ${renderPassport(eq, true)}
+      ${renderObjects(eq.objects, eq.id, true)}
+    </div>
+
+    <div style="padding:16px 28px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-shrink:0;background:#f8fafc;">
+      <button onclick="saveEq()" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Сохранить изменения
+      </button>
+      <button onclick="renderDetail(currentEq)" class="btn btn-outline-secondary">Отменить</button>
+    </div>`;
+}
+
+/* ── Авторасчёт следующей поверки ───────────── */
+function autoCalcNextDate() {
+  const display = document.getElementById('auto-next-date');
+  if (!display) return;
+  const dateStr = document.querySelector('.ef[name=verification_date]')?.value;
+  const freq    = parseInt(document.querySelector('.ef[name=checking_frequency]')?.value) || 0;
+  if (dateStr && freq > 0) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + freq);
+    display.textContent = d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric'});
+  } else {
+    display.textContent = '—';
+  }
+}
+
+/* ── Сохранение ─────────────────────────────── */
+function saveEq() {
+  const panel = document.getElementById('eq-detail');
+  const data  = {};
+  panel.querySelectorAll('input.ef[name], select.ef[name]').forEach(el => { data[el.name] = el.value; });
+
+  fetch('/equipment/' + currentEqId + '/update/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if (resp.errors) {
+      const box = document.getElementById('eq-errors');
+      box.innerHTML = `<div class="alert alert-danger py-2">${esc(Object.values(resp.errors).flat().join('; '))}</div>`;
+      box.style.display = 'block';
+      return;
+    }
+    currentEq = resp;
+    const item = document.querySelector('.eq-item[data-id="' + currentEqId + '"]');
+    if (item) {
+      item.querySelector('.eq-item-name').textContent = resp.name;
+      item.classList.remove('warn-yellow','warn-orange','warn-red');
+      if (resp.verification_warning) item.classList.add('warn-' + resp.verification_warning);
+    }
+    window._isDirty = false; window._isEditing = false;
+    showToast('Оборудование сохранено');
+    renderDetail(resp);
+  })
+  .catch(() => alert('Ошибка соединения с сервером'));
+}
+
+/* ── Фильтры ─────────────────────────────────── */
+function applyEqFilter(btn) {
+  document.querySelectorAll('.eq-chip').forEach(b => {
+    b.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;';
+  });
+  btn.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;';
+  const f = btn.dataset.f;
+  document.querySelectorAll('.eq-item').forEach(item => {
+    const show = f === 'all' ? true
+      : f === 'warn' ? (item.classList.contains('warn-red') || item.classList.contains('warn-orange') || item.classList.contains('warn-yellow'))
+      : item.dataset.type === f.replace('type:', '');
+    item.style.display = show ? '' : 'none';
+  });
+}
+
+/* ── Сортировка ──────────────────────────────── */
+let _eqSortAsc = true;
+function sortEqList() {
+  _eqSortAsc = !_eqSortAsc;
+  document.getElementById('eq-sort-btn').innerHTML =
+    _eqSortAsc ? '<i class="bi bi-sort-alpha-down"></i>' : '<i class="bi bi-sort-alpha-up"></i>';
+  const container = document.getElementById('eq-list-scroll');
+  Array.from(container.querySelectorAll('.eq-item'))
+    .sort((a,b) => _eqSortAsc
+      ? a.dataset.name.localeCompare(b.dataset.name,'ru')
+      : b.dataset.name.localeCompare(a.dataset.name,'ru'))
+    .forEach(i => container.appendChild(i));
+}
+
+/* ── isDirty ─────────────────────────────────── */
+const _OrigRenderEditModeEq = renderEditMode;
+renderEditMode = function() {
+  _OrigRenderEditModeEq();
+  window._isEditing = true; window._isDirty = false;
+  setTimeout(() => {
+    document.querySelectorAll('#eq-detail input.ef,#eq-detail select.ef,#eq-detail textarea.ef')
+      .forEach(el => el.addEventListener('input', () => { window._isDirty = true; }));
+  }, 60);
+};
+
+/* ── Keyboard hooks ──────────────────────────── */
+window._onKbEsc  = () => { if (window._isEditing) { window._isDirty=false; window._isEditing=false; renderDetail(currentEq); } };
+window._onKbSave = () => { if (window._isEditing) saveEq(); };
+window._onKbDown = () => {
+  const items = [...document.querySelectorAll('.eq-item')].filter(i=>i.style.display!=='none');
+  const next = items[items.findIndex(i=>i.classList.contains('active'))+1];
+  if (next) next.click();
+};
+window._onKbUp = () => {
+  const items = [...document.querySelectorAll('.eq-item')].filter(i=>i.style.display!=='none');
+  const prev = items[items.findIndex(i=>i.classList.contains('active'))-1];
+  if (prev) prev.click();
+};
+</script>
+{% endblock %}

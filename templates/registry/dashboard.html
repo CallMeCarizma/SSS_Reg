@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load registry_extras %}
+{% block title %}Панель{% endblock %}
+{% block page_title %}Панель управления{% endblock %}
+
+{% block content %}
+<section class="stats-grid mb-4">
+  <div class="stat-card">
+    <div class="stat-icon bg-primary-subtle text-primary">
+      <i class="bi bi-people"></i>
+    </div>
+    <div>
+      <div class="stat-label">Контрагенты</div>
+      <div class="stat-value">{{ stats.contractors }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon bg-info-subtle text-info">
+      <i class="bi bi-person-badge"></i>
+    </div>
+    <div>
+      <div class="stat-label">Сотрудники</div>
+      <div class="stat-value">{{ stats.employees }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon bg-success-subtle text-success">
+      <i class="bi bi-buildings"></i>
+    </div>
+    <div>
+      <div class="stat-label">Объекты</div>
+      <div class="stat-value">{{ stats.objects }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon bg-warning-subtle text-warning">
+      <i class="bi bi-file-earmark-text"></i>
+    </div>
+    <div>
+      <div class="stat-label">Документы</div>
+      <div class="stat-value">{{ stats.documents }}</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon bg-info-subtle text-info">
+      <i class="bi bi-tools"></i>
+    </div>
+    <div>
+      <div class="stat-label">Оборудование</div>
+      <div class="stat-value">{{ stats.equipment }}</div>
+    </div>
+  </div>
+</section>
+
+
+{% if expiring_equipment %}
+<section class="mt-4">
+  <div class="panel-card card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="section-head mb-3">
+        <div>
+          <h3 class="section-title">Приближающиеся поверки</h3>
+          <p class="section-text">Оборудование с датой поверки в ближайшие 30 дней.</p>
+        </div>
+        <a href="/equipment/" class="btn btn-outline-secondary btn-sm">Всё оборудование</a>
+      </div>
+      <div class="row g-2">
+        {% for eq in expiring_equipment %}
+        {% with w=eq.next_verification_date|verification_warning %}
+        <div class="col-xl-4 col-lg-6">
+          <div style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:12px;
+            {% if w == 'warn-red' %}background:#fef2f2;border:1px solid #fca5a5;
+            {% elif w == 'warn-orange' %}background:#fff7ed;border:1px solid #fdba74;
+            {% elif w == 'warn-yellow' %}background:#fefce8;border:1px solid #fde68a;
+            {% else %}background:#f8fafc;border:1px solid #e5e7eb;{% endif %}">
+            <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;
+              {% if w == 'warn-red' %}background:#ef4444;
+              {% elif w == 'warn-orange' %}background:#f97316;
+              {% elif w == 'warn-yellow' %}background:#eab308;
+              {% else %}background:#9ca3af;{% endif %}">
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:.87rem;color:#18212f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ eq.name }}</div>
+              <div style="font-size:.75rem;color:#6b7280;">{{ eq.get_type_display }}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-weight:700;font-size:.85rem;
+                {% if w == 'warn-red' %}color:#dc2626;
+                {% elif w == 'warn-orange' %}color:#ea580c;
+                {% elif w == 'warn-yellow' %}color:#ca8a04;
+                {% else %}color:#374151;{% endif %}">
+                {{ eq.next_verification_date|date:"d.m.Y" }}
+              </div>
+              <div style="font-size:.72rem;color:#9ca3af;">поверка</div>
+            </div>
+          </div>
+        </div>
+        {% endwith %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="quick-actions mt-4">
+  <a href="/objects/create/" class="quick-action-card">
+    <i class="bi bi-plus-square"></i>
+    <span>Добавить объект</span>
+  </a>
+  <a href="/documents/create/" class="quick-action-card">
+    <i class="bi bi-file-earmark-plus"></i>
+    <span>Добавить документ</span>
+  </a>
+  <a href="/equipment/create/" class="quick-action-card">
+    <i class="bi bi-wrench-adjustable-circle"></i>
+    <span>Добавить оборудование</span>
+  </a>
+  <a href="/contractors/create/" class="quick-action-card">
+    <i class="bi bi-person-plus"></i>
+    <span>Добавить контрагента</span>
+  </a>
+</section>
+{% endblock %}

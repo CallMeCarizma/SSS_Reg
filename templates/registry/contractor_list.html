@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ title }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+{{ type_choices|json_script:"contractor-types-data" }}
+
+<div class="card border-0 shadow-sm" style="min-height:76vh;overflow:hidden;border-radius:18px;">
+  <div class="d-flex" style="min-height:76vh;">
+
+    <!-- Левая колонка -->
+    <div style="width:400px;min-width:400px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb;">
+        <form method="get" class="d-flex gap-2">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 pe-1">
+              <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" name="q"
+                   value="{{ q }}" placeholder="Поиск по контрагентам">
+          </div>
+          <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          <a href="/contractors/create/" class="btn btn-primary flex-shrink-0" title="Добавить контрагента">
+            <i class="bi bi-plus-circle"></i>
+          </a>
+        </form>
+      </div>
+
+      <div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <button class="ctr-chip active" data-f="all"       onclick="applyCtrFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;">Все</button>
+        <button class="ctr-chip"        data-f="individual" onclick="applyCtrFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;">Физ. лица</button>
+        <button class="ctr-chip"        data-f="legal"     onclick="applyCtrFilter(this)" style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;">Юр. лица</button>
+        <button onclick="sortCtrList()" id="ctr-sort-btn" title="Сортировка" style="margin-left:auto;border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:.8rem;color:#6b7280;"><i class="bi bi-sort-alpha-down"></i></button>
+      </div>
+
+      <div style="overflow-y:auto;flex:1;" id="ctr-list-scroll">
+        {% for c in items %}
+        <div class="ctr-item" data-id="{{ c.id }}" data-name="{{ c.name|lower }}" data-type="{{ c.type }}"
+             onclick="_checkUnsaved(function(){loadContractor({{ c.id }}, document.querySelector('.ctr-item[data-id=\'{{ c.id }}\']'))})"
+             style="padding:13px 18px;border-bottom:1px solid #e5e7eb;cursor:pointer;border-left:3px solid transparent;transition:background .12s;">
+          <div style="font-size:.7rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">#{{ c.id }}</div>
+          <div class="ctr-item-name" style="font-weight:700;color:#18212f;font-size:.92rem;margin-bottom:3px;line-height:1.3;">{{ c.name }}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:.78rem;font-weight:600;color:#6b7280;">{{ c.get_type_display }}</span>
+            {% if c.inn %}
+            <span style="color:#d1d5db;">·</span>
+            <span style="font-size:.78rem;color:#9ca3af;">ИНН {{ c.inn }}</span>
+            {% endif %}
+          </div>
+          {% if c.address %}
+          <div style="font-size:.76rem;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.address }}</div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="text-center text-muted p-5">
+          <i class="bi bi-people" style="font-size:2.2rem;opacity:.3;display:block;margin-bottom:8px;"></i>
+          Контрагентов не найдено
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Правая колонка -->
+    <div class="flex-grow-1 d-flex flex-column" id="ctr-detail" style="overflow-y:auto;background:#fff;">
+      <div class="m-auto text-center text-muted" style="padding:80px 32px;">
+        <i class="bi bi-arrow-left-circle" style="font-size:3rem;opacity:.25;display:block;margin-bottom:12px;"></i>
+        Выберите контрагента из списка слева
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.ctr-item:hover  { background:#f8fafc; }
+.ctr-item.active { background:#eff6ff !important; border-left-color:#0d6efd !important; }
+.ef { width:100%;border:1px solid #d1d5db;border-radius:8px;padding:7px 10px;
+      font-weight:600;color:#18212f;font-size:.9rem;background:#fff;font-family:inherit; }
+.ef:focus { outline:none;border-color:#86b7fe;box-shadow:0 0 0 3px rgba(13,110,253,.12); }
+</style>
+
+<script>
+const CTR_TYPES = JSON.parse(document.getElementById('contractor-types-data').textContent);
+
+let currentCtrId = null;
+let currentCtr   = null;
+
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function esc(s) {
+  if (s === null || s === undefined || s === '') return '—';
+  const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML;
+}
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const FS = 'padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid #e5e7eb;';
+const FL = 'font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:4px;';
+const FV = 'font-weight:600;color:#18212f;font-size:.9rem;';
+
+function field(label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div><div style="${FV}">${esc(value)}</div></div>`;
+}
+function eInput(name, label, value, req) {
+  return `<div style="${FS}"><div style="${FL}">${label}${req?'<span style="color:#ef4444;margin-left:2px">*</span>':''}</div>
+    <input class="ef" type="text" name="${name}" value="${escAttr(value ?? '')}"></div>`;
+}
+function eTextarea(name, label, value) {
+  return `<div style="${FS}"><div style="${FL}">${label}</div>
+    <textarea class="ef" name="${name}" rows="3" style="resize:vertical;">${esc(value ?? '')}</textarea></div>`;
+}
+function eSelect(name, label, options, current) {
+  const opts = options.map(o =>
+    `<option value="${escAttr(o.value)}"${o.value===current?' selected':''}>${esc(o.label)}</option>`
+  ).join('');
+  return `<div style="${FS}"><div style="${FL}">${label}</div><select class="ef" name="${name}">${opts}</select></div>`;
+}
+
+function loadContractor(id, el) {
+  currentCtrId = id;
+  document.querySelectorAll('.ctr-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  fetch('/contractors/' + id + '/detail/')
+    .then(r => r.json())
+    .then(c => { currentCtr = c; renderDetail(c); })
+    .catch(() => {
+      document.getElementById('ctr-detail').innerHTML =
+        '<div class="m-auto text-center text-muted p-5"><i class="bi bi-exclamation-circle"></i> Ошибка загрузки</div>';
+    });
+}
+
+const TYPE_BADGE = { individual: 'bg-info text-dark', legal: 'bg-primary' };
+
+function renderDetail(c) {
+  document.getElementById('ctr-detail').innerHTML = `
+    <div style="padding:24px 28px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-shrink:0;">
+      <div>
+        <h4 style="font-size:1.05rem;font-weight:800;margin:0 0 8px;color:#18212f;line-height:1.35;">${esc(c.name)}</h4>
+        <span class="badge ${TYPE_BADGE[c.type]||'bg-secondary'}">${esc(c.type_display)}</span>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+          <i class="bi bi-pencil-square"></i> Изменить
+        </button>
+        <a href="/contractors/${c.id}/delete/" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash3"></i>
+        </a>
+      </div>
+    </div>
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      ${c.full_name ? field('Полное наименование', c.full_name) : ''}
+      <div class="row g-2">
+        <div class="col-5">${field('ИНН', c.inn)}</div>
+        <div class="col-4">${field('КПП', c.kpp)}</div>
+        <div class="col-3">${field('ОГРН', c.ogrn)}</div>
+      </div>
+      ${field('Адрес', c.address)}
+      ${c.note ? field('Заметка', c.note) : ''}
+    </div>`;
+}
+
+function renderEditMode() {
+  const c = currentCtr;
+  if (!c) return;
+  document.getElementById('ctr-detail').innerHTML = `
+    <div style="padding:20px 28px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0;background:#fff8f0;">
+      <div>
+        <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;">● Режим редактирования</span>
+        <div style="font-weight:800;color:#18212f;font-size:1rem;margin-top:2px;">${esc(c.name)}</div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="saveContractor()" class="btn btn-sm btn-primary">
+          <i class="bi bi-check2-circle"></i> Сохранить
+        </button>
+        <button onclick="renderDetail(currentCtr)" class="btn btn-sm btn-outline-secondary">Отменить</button>
+      </div>
+    </div>
+    <div id="ctr-errors" style="display:none;padding:10px 28px 0;"></div>
+    <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
+      ${eInput('name', 'Наименование', c.name, true)}
+      ${eInput('full_name', 'Полное наименование', c.full_name, false)}
+      ${eSelect('type', 'Тип', CTR_TYPES, c.type)}
+      <div class="row g-2">
+        <div class="col-5">${eInput('inn', 'ИНН', c.inn, false)}</div>
+        <div class="col-4">${eInput('kpp', 'КПП', c.kpp, false)}</div>
+        <div class="col-3">${eInput('ogrn', 'ОГРН', c.ogrn, false)}</div>
+      </div>
+      ${eInput('address', 'Адрес', c.address, false)}
+      ${eTextarea('note', 'Заметка', c.note)}
+    </div>
+    <div style="padding:16px 28px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-shrink:0;background:#f8fafc;">
+      <button onclick="saveContractor()" class="btn btn-primary">
+        <i class="bi bi-check2-circle me-1"></i> Сохранить изменения
+      </button>
+      <button onclick="renderDetail(currentCtr)" class="btn btn-outline-secondary">Отменить</button>
+    </div>`;
+}
+
+function saveContractor() {
+  const panel = document.getElementById('ctr-detail');
+  const data = {};
+  panel.querySelectorAll('input.ef[name], select.ef[name], textarea.ef[name]').forEach(el => {
+    data[el.name] = el.value;
+  });
+  fetch('/contractors/' + currentCtrId + '/update/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(resp => {
+    if (resp.errors) {
+      const box = document.getElementById('ctr-errors');
+      box.innerHTML = `<div class="alert alert-danger py-2">${esc(Object.values(resp.errors).flat().join('; '))}</div>`;
+      box.style.display = 'block';
+      return;
+    }
+    currentCtr = resp;
+    const item = document.querySelector('.ctr-item[data-id="' + currentCtrId + '"]');
+    if (item) item.querySelector('.ctr-item-name').textContent = resp.name;
+    window._isDirty = false; window._isEditing = false;
+    showToast('Контрагент сохранён');
+    renderDetail(resp);
+  })
+  .catch(() => alert('Ошибка соединения с сервером'));
+}
+
+/* ── Фильтры ─────────────────────────────────── */
+function applyCtrFilter(btn) {
+  document.querySelectorAll('.ctr-chip').forEach(b => {
+    b.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;';
+  });
+  btn.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;';
+  const f = btn.dataset.f;
+  document.querySelectorAll('.ctr-item').forEach(item => {
+    item.style.display = (f === 'all' || item.dataset.type === f) ? '' : 'none';
+  });
+}
+
+/* ── Сортировка ──────────────────────────────── */
+let _ctrSortAsc = true;
+function sortCtrList() {
+  _ctrSortAsc = !_ctrSortAsc;
+  document.getElementById('ctr-sort-btn').innerHTML =
+    _ctrSortAsc ? '<i class="bi bi-sort-alpha-down"></i>' : '<i class="bi bi-sort-alpha-up"></i>';
+  const container = document.getElementById('ctr-list-scroll');
+  Array.from(container.querySelectorAll('.ctr-item'))
+    .sort((a,b) => _ctrSortAsc
+      ? a.dataset.name.localeCompare(b.dataset.name,'ru')
+      : b.dataset.name.localeCompare(a.dataset.name,'ru'))
+    .forEach(i => container.appendChild(i));
+}
+
+/* ── isDirty ─────────────────────────────────── */
+const _OrigRenderEditModeCtr = renderEditMode;
+renderEditMode = function() {
+  _OrigRenderEditModeCtr();
+  window._isEditing = true; window._isDirty = false;
+  setTimeout(() => {
+    document.querySelectorAll('#ctr-detail input.ef,#ctr-detail select.ef,#ctr-detail textarea.ef')
+      .forEach(el => el.addEventListener('input', () => { window._isDirty = true; }));
+  }, 60);
+};
+
+/* ── Keyboard hooks ──────────────────────────── */
+window._onKbEsc  = () => { if (window._isEditing) { window._isDirty=false; window._isEditing=false; renderDetail(currentCtr); } };
+window._onKbSave = () => { if (window._isEditing) saveContractor(); };
+window._onKbDown = () => {
+  const items = [...document.querySelectorAll('.ctr-item')].filter(i=>i.style.display!=='none');
+  const next = items[items.findIndex(i=>i.classList.contains('active'))+1];
+  if (next) next.click();
+};
+window._onKbUp = () => {
+  const items = [...document.querySelectorAll('.ctr-item')].filter(i=>i.style.display!=='none');
+  const prev = items[items.findIndex(i=>i.classList.contains('active'))-1];
+  if (prev) prev.click();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const selectId = new URLSearchParams(window.location.search).get('select');
+  if (selectId) {
+    const el = document.querySelector('.ctr-item[data-id="' + selectId + '"]');
+    if (el) { loadContractor(parseInt(selectId), el); el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  }
+});
+</script>
+{% endblock %}

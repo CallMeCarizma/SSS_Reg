@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+{% load crispy_forms_tags %}
+{% block content %}
+<div class="form-layout">
+  <div class="form-main card border-0 shadow-sm">
+    <div class="card-body p-4 p-lg-5">
+      <div class="mb-4">
+        <h2 class="section-title mb-1">{{ title }}</h2>
+        <p class="section-text mb-0">Заполните поля и сохраните запись.</p>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="form-modern">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <div class="form-actions">
+          <button class="btn btn-primary btn-lg" type="submit">
+            <i class="bi bi-check2-circle"></i>
+            <span>Сохранить</span>
+          </button>
+          <a class="btn btn-outline-secondary btn-lg" href="javascript:history.back()">
+            Назад
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <aside class="form-side card border-0 shadow-sm">
+    <div class="card-body">
+      <h3 class="section-title">Подсказка</h3>
+      <p class="section-text">
+        Для документов и оборудования можно прикреплять файлы.
+        Для оборудования периодичность поверки лучше указывать прямо в карточке оборудования.
+      </p>
+
+      <div class="tip-box">
+        <strong>Совет:</strong>
+        заполняйте названия единообразно, чтобы поиск работал лучше.
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.drop-zone {
+  border: 2px dashed #c7d2fe; border-radius: 12px; padding: 28px 20px;
+  text-align: center; cursor: pointer; background: #f8fafc;
+  transition: border-color .18s, background .18s;
+}
+.drop-zone:hover, .drop-zone.dz-over {
+  border-color: #6366f1; background: #eef2ff;
+}
+.drop-zone .dz-icon { font-size: 2rem; color: #6366f1; display: block; margin-bottom: 8px; }
+.drop-zone .dz-hint { font-size: .87rem; color: #6b7280; }
+.drop-zone .dz-hint u { color: #4f46e5; cursor: pointer; }
+.drop-zone .dz-names { margin-top: 8px; font-size: .83rem; font-weight: 700; color: #18212f; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  /* ── drag-and-drop для всех file-инпутов ── */
+  document.querySelectorAll('input[type="file"]').forEach(function (input) {
+    var zone = document.createElement('div');
+    zone.className = 'drop-zone';
+    zone.innerHTML =
+      '<i class="bi bi-cloud-upload dz-icon"></i>' +
+      '<div class="dz-hint">Перетащите файл сюда или <u>нажмите для выбора</u></div>' +
+      '<div class="dz-names"></div>';
+
+    input.parentNode.insertBefore(zone, input.nextSibling);
+    input.style.display = 'none';
+
+    zone.addEventListener('click', function () { input.click(); });
+
+    zone.addEventListener('dragover', function (e) {
+      e.preventDefault(); zone.classList.add('dz-over');
+    });
+    zone.addEventListener('dragleave', function () { zone.classList.remove('dz-over'); });
+    zone.addEventListener('drop', function (e) {
+      e.preventDefault(); zone.classList.remove('dz-over');
+      var dt = new DataTransfer();
+      Array.from(e.dataTransfer.files).forEach(function (f) { dt.items.add(f); });
+      input.files = dt.files;
+      updateNames(input, zone);
+    });
+
+    input.addEventListener('change', function () { updateNames(input, zone); });
+  });
+
+  function updateNames(input, zone) {
+    var el = zone.querySelector('.dz-names');
+    var files = Array.from(input.files);
+    el.textContent = files.length === 0 ? '' :
+                     files.length === 1 ? files[0].name :
+                     files.length + ' файла выбрано';
+
+    /* авто-заполнение названия из первого файла */
+    var titleInput = document.getElementById('id_title') || document.getElementById('id_name');
+    if (titleInput && !titleInput.value && files[0]) {
+      var raw = files[0].name;
+      titleInput.value = raw.includes('.') ? raw.slice(0, raw.lastIndexOf('.')) : raw;
+    }
+  }
+});
+</script>
+{% endblock %}

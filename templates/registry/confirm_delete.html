@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="delete-wrap">
+  <div class="card border-0 shadow-sm delete-card">
+    <div class="card-body p-4 p-lg-5 text-center">
+      <div class="delete-icon">
+        <i class="bi bi-exclamation-triangle"></i>
+      </div>
+      <h2 class="section-title mt-3">{{ title }}</h2>
+      <p class="section-text">
+        Вы действительно хотите удалить запись:
+      </p>
+
+      <div class="delete-object">
+        {{ object }}
+      </div>
+
+      <form method="post" class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+        {% csrf_token %}
+        <button class="btn btn-danger btn-lg" type="submit">
+          <i class="bi bi-trash3"></i>
+          <span>Удалить</span>
+        </button>
+        <a class="btn btn-outline-secondary btn-lg" href="javascript:history.back()">Отмена</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
