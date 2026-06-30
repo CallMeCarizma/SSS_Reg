@@ -8,20 +8,20 @@
 
     <!-- Шапка с навигацией -->
     <div style="padding:20px 28px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:16px;">
-      <button onclick="prevMonth()" style="border:1px solid #e5e7eb;background:#fff;border-radius:9px;padding:6px 14px;cursor:pointer;font-size:.95rem;color:#374151;">
+      <button onclick="prevMonth()" style="border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:6px 14px;cursor:pointer;font-size:.95rem;color:var(--text);">
         <i class="bi bi-chevron-left"></i>
       </button>
       <div style="flex:1;text-align:center;">
-        <span id="cal-month-label" style="font-size:1.1rem;font-weight:800;color:#18212f;"></span>
+        <span id="cal-month-label" style="font-size:1.1rem;font-weight:800;color:var(--text);"></span>
       </div>
-      <button onclick="nextMonth()" style="border:1px solid #e5e7eb;background:#fff;border-radius:9px;padding:6px 14px;cursor:pointer;font-size:.95rem;color:#374151;">
+      <button onclick="nextMonth()" style="border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:6px 14px;cursor:pointer;font-size:.95rem;color:var(--text);">
         <i class="bi bi-chevron-right"></i>
       </button>
       <button onclick="goToday()" style="border:1px solid #c7d2fe;background:#eef2ff;border-radius:9px;padding:6px 16px;cursor:pointer;font-size:.85rem;font-weight:700;color:#4f46e5;">Сегодня</button>
     </div>
 
     <!-- Дни недели -->
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #e5e7eb;background:#f8fafc;">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);background:var(--surface-2);">
       {% for d in "ПВСЧПСВ" %}{% endfor %}
       <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ПН</div>
       <div style="padding:8px;text-align:center;font-size:.72rem;font-weight:700;color:#9ca3af;letter-spacing:.06em;">ВТ</div>
@@ -36,7 +36,7 @@
     <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);flex:1;"></div>
 
     <!-- Список поверок в месяце -->
-    <div id="cal-list" style="padding:16px 28px;border-top:1px solid #e5e7eb;background:#f8fafc;"></div>
+    <div id="cal-list" style="padding:16px 28px;border-top:1px solid var(--border);background:var(--surface-2);"></div>
   </div>
 </div>
 
@@ -95,7 +95,7 @@ function render() {
       const isToday = dateStr === TODAY;
 
       const numEl = document.createElement('div');
-      numEl.style.cssText = 'font-size:.82rem;font-weight:' + (isToday?'800':'600') + ';color:' + (isToday?'#fff':'#374151') + ';width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:' + (isToday?'#0d6efd':'transparent') + ';margin-bottom:4px;';
+      numEl.style.cssText = 'font-size:.82rem;font-weight:' + (isToday?'800':'600') + ';color:' + (isToday?'#fff':'var(--text)') + ';width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:' + (isToday?'#0d6efd':'transparent') + ';margin-bottom:4px;';
       numEl.textContent = dayNum;
       cell.appendChild(numEl);
 
@@ -103,7 +103,7 @@ function render() {
         byDate[dateStr].forEach(ev => {
           const dot = document.createElement('div');
           const color = ev.warning ? (WARN_COLOR[ev.warning] || '#9ca3af') : '#9ca3af';
-          dot.style.cssText = 'font-size:.72rem;font-weight:600;color:#18212f;padding:2px 5px;border-radius:5px;background:' + color + '22;border-left:3px solid ' + color + ';margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;';
+          dot.style.cssText = 'font-size:.72rem;font-weight:600;color:var(--text);padding:2px 5px;border-radius:5px;background:' + color + '22;border-left:3px solid ' + color + ';margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;';
           dot.textContent = ev.title;
           dot.title = ev.title + ' — ' + ev.type + ' (' + ev.date + ')';
           dot.onclick = () => { window.location = ev.url; };
@@ -125,11 +125,11 @@ function render() {
   list.innerHTML = '<div style="font-size:.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Поверки в ' + MONTHS_RU[curMonth] + '</div>'
     + monthEvents.map(ev => {
       const color = ev.warning ? (WARN_COLOR[ev.warning] || '#9ca3af') : '#9ca3af';
-      return `<div onclick="window.location='${ev.url}'" style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:#fff;border:1px solid #e5e7eb;margin-bottom:6px;cursor:pointer;">
+      return `<div onclick="window.location='${ev.url}'" style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--border);margin-bottom:6px;cursor:pointer;">
         <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></span>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:.87rem;color:#18212f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ev.title}</div>
-          <div style="font-size:.75rem;color:#6b7280;">${ev.type}</div>
+          <div style="font-weight:700;font-size:.87rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ev.title}</div>
+          <div style="font-size:.75rem;color:var(--muted);">${ev.type}</div>
         </div>
         <div style="font-size:.85rem;font-weight:700;color:${color};flex-shrink:0;">${ev.date.split('-').reverse().join('.')}</div>
       </div>`;

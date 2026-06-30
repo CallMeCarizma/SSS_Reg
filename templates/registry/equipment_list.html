@@ -72,13 +72,13 @@
 </div>
 
 <style>
-.eq-item:hover        { background: #f8fafc; }
+.eq-item:hover        { background: var(--surface-2); }
 .eq-item.active       { background: #eff6ff !important; border-left-color: #0d6efd !important; }
 .eq-item.warn-yellow  { background: #fefce8; border-left-color: #eab308; }
 .eq-item.warn-orange  { background: #fff7ed; border-left-color: #f97316; }
 .eq-item.warn-red     { background: #fef2f2; border-left-color: #ef4444; }
-.ef { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 7px 10px;
-      font-weight: 600; color: #18212f; font-size: 0.9rem; background: #fff; font-family: inherit; }
+.ef { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+      font-weight: 600; color: var(--text); font-size: 0.9rem; background: var(--surface); font-family: inherit; }
 .ef:focus { outline: none; border-color: #86b7fe; box-shadow: 0 0 0 3px rgba(13,110,253,.12); }
 </style>
 
@@ -115,9 +115,9 @@ function escAttr(s) {
     .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-const FS = 'padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid #e5e7eb;';
-const FL = 'font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:4px;';
-const FV = 'font-weight:600;color:#18212f;font-size:.9rem;';
+const FS = 'padding:12px 14px;background:var(--surface-2);border-radius:12px;border:1px solid var(--border);';
+const FL = 'font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px;';
+const FV = 'font-weight:600;color:var(--text);font-size:.9rem;';
 
 const WARN_BADGE = {
   red:    '<span class="badge bg-danger ms-2">просрочено/≤7 дн.</span>',
@@ -179,7 +179,7 @@ function renderPassport(eq, editable) {
 function renderObjects(objects, eqId, editable) {
   const list = objects.length
     ? objects.map(o => `
-        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:5px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;">
           <i class="bi bi-buildings" style="color:#6b7280;flex-shrink:0;"></i>
           <span style="flex:1;font-weight:600;font-size:.88rem;">${esc(o.object_name)}</span>
           ${editable ? `<button onclick="unbindFromObject(${o.link_id},${eqId})"
@@ -269,9 +269,9 @@ function renderDetail(eq) {
     : field('Следующая поверка', eq.next_verification_date_display);
 
   document.getElementById('eq-detail').innerHTML = `
-    <div style="padding:24px 28px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-shrink:0;">
+    <div style="padding:24px 28px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-shrink:0;">
       <div>
-        <h4 style="font-size:1.05rem;font-weight:800;margin:0 0 8px;color:#18212f;line-height:1.35;">${esc(eq.name)}</h4>
+        <h4 style="font-size:1.05rem;font-weight:800;margin:0 0 8px;color:var(--text);line-height:1.35;">${esc(eq.name)}</h4>
         <span class="badge ${EQ_TYPE_COLOR[eq.type]||'bg-secondary'}">${esc(eq.type_display)}</span>
       </div>
       <div class="d-flex gap-2 flex-shrink-0">
@@ -301,10 +301,10 @@ function renderEditMode() {
   if (!eq) return;
 
   document.getElementById('eq-detail').innerHTML = `
-    <div style="padding:20px 28px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0;background:#fff8f0;">
+    <div style="padding:20px 28px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0;background:#fff8f0;">
       <div>
         <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;">● Режим редактирования</span>
-        <div style="font-weight:800;color:#18212f;font-size:1rem;margin-top:2px;">${esc(eq.name)}</div>
+        <div style="font-weight:800;color:var(--text);font-size:1rem;margin-top:2px;">${esc(eq.name)}</div>
       </div>
       <div class="d-flex gap-2 flex-shrink-0">
         <button onclick="saveEq()" class="btn btn-sm btn-primary">
@@ -345,7 +345,7 @@ function renderEditMode() {
       ${renderObjects(eq.objects, eq.id, true)}
     </div>
 
-    <div style="padding:16px 28px;border-top:1px solid #e5e7eb;display:flex;gap:12px;flex-shrink:0;background:#f8fafc;">
+    <div style="padding:16px 28px;border-top:1px solid var(--border);display:flex;gap:12px;flex-shrink:0;background:var(--surface-2);">
       <button onclick="saveEq()" class="btn btn-primary">
         <i class="bi bi-check2-circle me-1"></i> Сохранить изменения
       </button>
@@ -404,7 +404,7 @@ function saveEq() {
 /* ── Фильтры ─────────────────────────────────── */
 function applyEqFilter(btn) {
   document.querySelectorAll('.eq-chip').forEach(b => {
-    b.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;';
+    b.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;';
   });
   btn.style.cssText = 'font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;';
   const f = btn.dataset.f;

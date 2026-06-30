@@ -15,6 +15,17 @@
   --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
+[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c2333;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --shadow: 0 10px 30px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {
@@ -730,3 +741,282 @@ a {
     font-size: 1.5rem;
   }
 }
+
+/* ── Dark theme overrides ───────────────────────────────── */
+
+/* Карточки Bootstrap */
+[data-theme="dark"] .card { background: var(--surface) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .card-body { background: transparent !important; }
+
+/* Форм-контролы Bootstrap */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+  background: var(--surface-2) !important;
+  border-color: #3b82f6 !important;
+  color: var(--text) !important;
+  box-shadow: 0 0 0 .2rem rgba(59,130,246,.2) !important;
+}
+[data-theme="dark"] .input-group-text {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Кнопки */
+[data-theme="dark"] .btn-outline-secondary {
+  color: var(--muted) !important;
+  border-color: var(--border) !important;
+  background: transparent !important;
+}
+[data-theme="dark"] .btn-outline-secondary:hover {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .btn-light,
+[data-theme="dark"] .btn-light:hover {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Глобальный поиск */
+#gs-icon { color: #9ca3af; }
+#gs-hint { color: #c4c4c4; }
+
+[data-theme="dark"] #gs-search-wrap { background: var(--surface-2) !important; }
+[data-theme="dark"] #gs-icon        { color: var(--muted) !important; }
+[data-theme="dark"] #gs-hint        { color: var(--border) !important; }
+[data-theme="dark"] #gs-input       { color: var(--text) !important; }
+[data-theme="dark"] #gs-dropdown {
+  background: var(--surface) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5) !important;
+}
+[data-theme="dark"] .gs-item { border-color: var(--border) !important; }
+[data-theme="dark"] .gs-item:hover { background: var(--surface-2) !important; }
+
+/* Список-панели: левая колонка */
+[data-theme="dark"] .obj-item,
+[data-theme="dark"] .doc-item,
+[data-theme="dark"] .eq-item,
+[data-theme="dark"] .ctr-item,
+[data-theme="dark"] .emp-item {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .obj-item:hover,
+[data-theme="dark"] .doc-item:hover,
+[data-theme="dark"] .eq-item:hover,
+[data-theme="dark"] .ctr-item:hover,
+[data-theme="dark"] .emp-item:hover { background: var(--surface-2) !important; }
+
+[data-theme="dark"] .obj-item.active,
+[data-theme="dark"] .doc-item.active,
+[data-theme="dark"] .eq-item.active,
+[data-theme="dark"] .ctr-item.active,
+[data-theme="dark"] .emp-item.active {
+  background: #1e3a5f !important;
+  border-left-color: #3b82f6 !important;
+}
+
+/* Текст внутри list-item: перебиваем hardcoded dark inline colors */
+[data-theme="dark"] .obj-item-name,
+[data-theme="dark"] .ctr-item-name,
+[data-theme="dark"] .emp-item-name { color: var(--text) !important; }
+
+[data-theme="dark"] .obj-item-contact { color: var(--muted) !important; }
+
+[data-theme="dark"] .obj-item > div,
+[data-theme="dark"] .doc-item > div,
+[data-theme="dark"] .eq-item > div,
+[data-theme="dark"] .ctr-item > div,
+[data-theme="dark"] .emp-item > div { color: var(--text) !important; }
+
+[data-theme="dark"] .obj-item span,
+[data-theme="dark"] .doc-item span,
+[data-theme="dark"] .eq-item span,
+[data-theme="dark"] .ctr-item span,
+[data-theme="dark"] .emp-item span { color: var(--muted) !important; }
+
+/* Панель деталей: правая колонка */
+[data-theme="dark"] #obj-detail,
+[data-theme="dark"] #doc-detail,
+[data-theme="dark"] #eq-detail,
+[data-theme="dark"] #ctr-detail,
+[data-theme="dark"] #emp-detail { background: var(--surface) !important; }
+
+[data-theme="dark"] #obj-detail *,
+[data-theme="dark"] #doc-detail *,
+[data-theme="dark"] #eq-detail *,
+[data-theme="dark"] #ctr-detail *,
+[data-theme="dark"] #emp-detail * { border-color: var(--border) !important; }
+
+/* Текст в детальных панелях */
+[data-theme="dark"] #obj-detail div,
+[data-theme="dark"] #doc-detail div,
+[data-theme="dark"] #eq-detail div,
+[data-theme="dark"] #ctr-detail div,
+[data-theme="dark"] #emp-detail div { color: var(--text) !important; background-color: transparent !important; }
+
+[data-theme="dark"] #obj-detail span,
+[data-theme="dark"] #doc-detail span,
+[data-theme="dark"] #eq-detail span,
+[data-theme="dark"] #ctr-detail span,
+[data-theme="dark"] #emp-detail span { color: var(--muted) !important; }
+
+/* Паспорт-строки в деталях: фон */
+[data-theme="dark"] #obj-detail .passport-row,
+[data-theme="dark"] #doc-detail .passport-row,
+[data-theme="dark"] #eq-detail .passport-row,
+[data-theme="dark"] #ctr-detail .passport-row,
+[data-theme="dark"] #emp-detail .passport-row { background: var(--surface-2) !important; }
+
+/* Кнопки внутри детальных панелей */
+[data-theme="dark"] #obj-detail button:not(.btn-primary):not(.btn-danger):not(.btn-warning),
+[data-theme="dark"] #doc-detail button:not(.btn-primary):not(.btn-danger):not(.btn-warning),
+[data-theme="dark"] #eq-detail  button:not(.btn-primary):not(.btn-danger):not(.btn-warning),
+[data-theme="dark"] #ctr-detail button:not(.btn-primary):not(.btn-danger):not(.btn-warning),
+[data-theme="dark"] #emp-detail button:not(.btn-primary):not(.btn-danger):not(.btn-warning) {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Инпуты в режиме редактирования */
+[data-theme="dark"] input.ef,
+[data-theme="dark"] select.ef,
+[data-theme="dark"] textarea.ef {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Паспорт-строки */
+[data-theme="dark"] .passport-row { background: var(--surface-2) !important; }
+[data-theme="dark"] .passport-value { color: var(--text) !important; }
+[data-theme="dark"] .passport-label { color: var(--muted) !important; }
+
+/* Дашборд */
+[data-theme="dark"] .stat-card { background: var(--surface) !important; }
+[data-theme="dark"] .quick-action-card {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .quick-action-card:hover { color: #60a5fa !important; }
+[data-theme="dark"] .panel-card { background: var(--surface) !important; }
+
+/* Сортировка / фильтр-чипы */
+[data-theme="dark"] #obj-sort-btn, [data-theme="dark"] #doc-sort-btn,
+[data-theme="dark"] #eq-sort-btn,  [data-theme="dark"] #ctr-sort-btn,
+[data-theme="dark"] #emp-sort-btn {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+[data-theme="dark"] #obj-sort-btn i, [data-theme="dark"] #doc-sort-btn i,
+[data-theme="dark"] #eq-sort-btn i,  [data-theme="dark"] #ctr-sort-btn i,
+[data-theme="dark"] #emp-sort-btn i  { color: var(--muted) !important; }
+[data-theme="dark"] .obj-chip:not(.active),
+[data-theme="dark"] .eq-chip:not(.active) {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Модал несохранённых изменений */
+[data-theme="dark"] #unsaved-modal > div { background: var(--surface) !important; }
+[data-theme="dark"] #unsaved-modal div[style*="font-weight:800"] { color: var(--text) !important; }
+[data-theme="dark"] #um-cancel,
+[data-theme="dark"] #um-discard {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Alerts */
+[data-theme="dark"] .alert-danger {
+  background: rgba(220,38,38,.15) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(220,38,38,.3) !important;
+}
+
+/* Страница удаления */
+[data-theme="dark"] .delete-object {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Таблица */
+[data-theme="dark"] .table-modern tbody td { border-color: var(--border) !important; }
+[data-theme="dark"] .table-modern thead th { border-color: var(--border) !important; }
+[data-theme="dark"] .table-modern tbody tr:hover { background: var(--surface-2) !important; }
+
+/* Календарь поверок */
+[data-theme="dark"] #cal-grid > div { background: var(--surface) !important; border-color: var(--border) !important; }
+[data-theme="dark"] #cal-grid > div[style*="background:#fafafa"] { background: var(--bg) !important; }
+[data-theme="dark"] #cal-list { background: var(--surface-2) !important; border-color: var(--border) !important; }
+[data-theme="dark"] #cal-list > div[style*="background:#fff"] { background: var(--surface) !important; border-color: var(--border) !important; }
+
+/* Drag-and-drop зоны (форма загрузки) */
+[data-theme="dark"] .drop-zone {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Глобальный поиск — текст результатов */
+[data-theme="dark"] .gs-item { color: var(--text) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .gs-item i { color: var(--muted) !important; }
+[data-theme="dark"] .gs-item > div > div:last-child { color: var(--muted) !important; }
+[data-theme="dark"] #gs-dropdown div[style*="color:#9ca3af"] { color: var(--muted) !important; }
+
+/* Структурные границы двухпанельного макета */
+[data-theme="dark"] .card > div { border-color: var(--border) !important; }
+[data-theme="dark"] .card > div > div { border-color: var(--border) !important; }
+
+/* Фон правой панели (оверрайд inline background:#fff) */
+[data-theme="dark"] #obj-detail,
+[data-theme="dark"] #doc-detail,
+[data-theme="dark"] #eq-detail,
+[data-theme="dark"] #ctr-detail,
+[data-theme="dark"] #emp-detail { background: var(--surface) !important; }
+
+/* ctr-chip тёмная тема (аналогично obj-chip) */
+[data-theme="dark"] .ctr-chip:not(.active) {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Предупреждающие элементы в списке оборудования */
+[data-theme="dark"] .eq-item.warn-yellow { background: rgba(234,179,8,.12) !important; border-left-color: #eab308 !important; }
+[data-theme="dark"] .eq-item.warn-orange { background: rgba(249,115,22,.12) !important; border-left-color: #f97316 !important; }
+[data-theme="dark"] .eq-item.warn-red    { background: rgba(239,68,68,.12)  !important; border-left-color: #ef4444 !important; }
+
+/* Предупреждающие поля в детальной панели (WARN_FS) */
+[data-theme="dark"] #eq-detail div[style*="background:#fef2f2"] { background: rgba(239,68,68,.15) !important; border-color: rgba(239,68,68,.4) !important; }
+[data-theme="dark"] #eq-detail div[style*="background:#fff7ed"] { background: rgba(249,115,22,.15) !important; border-color: rgba(249,115,22,.4) !important; }
+[data-theme="dark"] #eq-detail div[style*="background:#fefce8"] { background: rgba(234,179,8,.15)  !important; border-color: rgba(234,179,8,.4)  !important; }
+
+/* Дашборд: карточки истекающего оборудования */
+[data-theme="dark"] div[style*="background:#fef2f2"] { background: rgba(239,68,68,.12) !important; border-color: rgba(239,68,68,.35) !important; }
+[data-theme="dark"] div[style*="background:#fff7ed"] { background: rgba(249,115,22,.12) !important; border-color: rgba(249,115,22,.35) !important; }
+[data-theme="dark"] div[style*="background:#fefce8"] { background: rgba(234,179,8,.12)  !important; border-color: rgba(234,179,8,.35)  !important; }
+
+/* Дашборд: текст в карточках (и любые hardcoded цвета текста на тёмном фоне) */
+[data-theme="dark"] .card div[style*="color:#18212f"] { color: var(--text) !important; }
+[data-theme="dark"] .card div[style*="color: #18212f"] { color: var(--text) !important; }
+[data-theme="dark"] .card div[style*="color:#6b7280"] { color: var(--muted) !important; }
+[data-theme="dark"] .card div[style*="color: #6b7280"] { color: var(--muted) !important; }
+[data-theme="dark"] .card div[style*="color:#9ca3af"] { color: var(--muted) !important; }
+[data-theme="dark"] .card div[style*="color:#374151"] { color: var(--text) !important; }
+
+/* Объекты внутри obj-detail с warning-фоном */
+[data-theme="dark"] #obj-detail div[style*="background:#fff7ed"] { background: rgba(249,115,22,.15) !important; border-color: rgba(249,115,22,.4) !important; }
