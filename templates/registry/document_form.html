@@ -40,10 +40,12 @@
             {{ attachment }}
           </a>
 
+          {% if can_delete %}
           <form method="post" action="{% url 'document_attachment_delete' attachment.id %}">
             {% csrf_token %}
             <button class="btn btn-sm btn-outline-danger" type="submit">Удалить</button>
           </form>
+          {% endif %}
         </div>
       {% empty %}
         <p class="text-muted">Файлов пока нет.</p>

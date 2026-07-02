@@ -107,6 +107,7 @@
 </section>
 {% endif %}
 
+{% if can_edit %}
 <section class="quick-actions mt-4">
   <a href="/objects/create/" class="quick-action-card">
     <i class="bi bi-plus-square"></i>
@@ -125,4 +126,5 @@
     <span>Добавить контрагента</span>
   </a>
 </section>
+{% endif %}
 {% endblock %}

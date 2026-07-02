@@ -1,6 +1,5 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Count
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -8,6 +7,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DeleteView
 from django.shortcuts import get_object_or_404, redirect
 from .models import DocumentAttachment
+from .permissions import edit_required, delete_required, EditRequiredMixin, DeleteRequiredMixin
 
 from .forms import (
     ContractorForm,
@@ -86,7 +86,7 @@ def dashboard(request):
         "today": today,
     })
 
-@login_required
+@delete_required
 def document_attachment_delete(request, pk):
     attachment = get_object_or_404(DocumentAttachment, pk=pk)
     document_id = attachment.document_id
@@ -151,7 +151,7 @@ def contractor_detail_json(request, pk):
     return JsonResponse(_contractor_json(c))
 
 
-@login_required
+@edit_required
 def contractor_update_json(request, pk):
     import json
     c = get_object_or_404(Contractor, pk=pk)
@@ -184,7 +184,7 @@ def employee_detail_json(request, pk):
     return JsonResponse(_employee_json(e))
 
 
-@login_required
+@edit_required
 def employee_update_json(request, pk):
     import json
     e = get_object_or_404(Employee, pk=pk)
@@ -336,7 +336,7 @@ def object_detail_json(request, pk):
     return JsonResponse(_site_object_json(obj))
 
 
-@login_required
+@edit_required
 def object_update_json(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -375,7 +375,7 @@ def object_update_json(request, pk):
     return JsonResponse(_site_object_json(obj))
 
 
-@login_required
+@edit_required
 def object_document_create(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -416,7 +416,7 @@ def object_document_create(request, pk):
     return JsonResponse(_doc_for_object_json(doc))
 
 
-@login_required
+@edit_required
 def object_document_quickupload(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -435,7 +435,7 @@ def object_document_quickupload(request, pk):
     return JsonResponse(_doc_for_object_json(doc))
 
 
-@login_required
+@edit_required
 def document_assign_object(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -483,7 +483,7 @@ def document_detail_json(request, pk):
     return JsonResponse(_document_json(doc))
 
 
-@login_required
+@edit_required
 def document_update_json(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -527,7 +527,7 @@ def document_update_json(request, pk):
     return JsonResponse(_document_json(doc))
 
 
-@login_required
+@edit_required
 def document_attachment_create(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -605,7 +605,7 @@ def equipment_detail_json(request, pk):
     return JsonResponse(_equipment_json(eq))
 
 
-@login_required
+@edit_required
 def equipment_update_json(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -652,7 +652,7 @@ def equipment_update_json(request, pk):
     return JsonResponse(_equipment_json(eq))
 
 
-@login_required
+@edit_required
 def equipment_passport_upload(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -768,7 +768,7 @@ def object_equipment_list(request):
     })
 
 
-@login_required
+@edit_required
 def object_equipment_create_bind(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -818,7 +818,7 @@ def object_equipment_create_bind(request, pk):
     return JsonResponse({'ok': True, 'equipment_id': eq.id})
 
 
-@login_required
+@edit_required
 def object_equipment_bind(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -836,7 +836,7 @@ def object_equipment_bind(request):
     return JsonResponse({'ok': True, 'link_id': oe.id})
 
 
-@login_required
+@delete_required
 def object_equipment_unbind(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -845,7 +845,7 @@ def object_equipment_unbind(request, pk):
     return JsonResponse({'ok': True})
 
 
-class BaseRegistryCreateView(LoginRequiredMixin, CreateView):
+class BaseRegistryCreateView(EditRequiredMixin, CreateView):
     template_name = "registry/form.html"
 
     def get_context_data(self, **kwargs):
@@ -854,7 +854,7 @@ class BaseRegistryCreateView(LoginRequiredMixin, CreateView):
         return context
 
 
-class BaseRegistryUpdateView(LoginRequiredMixin, UpdateView):
+class BaseRegistryUpdateView(EditRequiredMixin, UpdateView):
     template_name = "registry/form.html"
 
     def get_context_data(self, **kwargs):
@@ -863,7 +863,7 @@ class BaseRegistryUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 
-class BaseRegistryDeleteView(LoginRequiredMixin, DeleteView):
+class BaseRegistryDeleteView(DeleteRequiredMixin, DeleteView):
     template_name = "registry/confirm_delete.html"
 
     def get_context_data(self, **kwargs):

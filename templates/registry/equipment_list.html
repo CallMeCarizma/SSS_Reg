@@ -23,9 +23,11 @@
                    value="{{ q }}" placeholder="Поиск по оборудованию">
           </div>
           <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          {% if can_edit %}
           <a href="/equipment/create/" class="btn btn-primary flex-shrink-0" title="Добавить оборудование">
             <i class="bi bi-plus-circle"></i>
           </a>
+          {% endif %}
         </form>
       </div>
 
@@ -85,6 +87,8 @@
 <script>
 const EQ_TYPES   = JSON.parse(document.getElementById('eq-types-data').textContent);
 const ALL_OBJ    = JSON.parse(document.getElementById('all-objects-data').textContent);
+const CAN_EDIT = {{ can_edit|yesno:"true,false" }};
+const CAN_DELETE = {{ can_delete|yesno:"true,false" }};
 
 let currentEqId = null;
 let currentEq   = null;
@@ -182,7 +186,7 @@ function renderObjects(objects, eqId, editable) {
         <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;">
           <i class="bi bi-buildings" style="color:#6b7280;flex-shrink:0;"></i>
           <span style="flex:1;font-weight:600;font-size:.88rem;">${esc(o.object_name)}</span>
-          ${editable ? `<button onclick="unbindFromObject(${o.link_id},${eqId})"
+          ${editable && CAN_DELETE ? `<button onclick="unbindFromObject(${o.link_id},${eqId})"
                   style="border:none;background:none;color:#dc2626;padding:2px 6px;cursor:pointer;flex-shrink:0;" title="Отвязать">
             <i class="bi bi-x-circle"></i>
           </button>` : ''}
@@ -275,12 +279,12 @@ function renderDetail(eq) {
         <span class="badge ${EQ_TYPE_COLOR[eq.type]||'bg-secondary'}">${esc(eq.type_display)}</span>
       </div>
       <div class="d-flex gap-2 flex-shrink-0">
-        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+        ${CAN_EDIT ? `<button onclick="renderEditMode()" class="btn btn-sm btn-light border">
           <i class="bi bi-pencil-square"></i> Изменить
-        </button>
-        <a href="/equipment/${eq.id}/delete/" class="btn btn-sm btn-outline-danger">
+        </button>` : ''}
+        ${CAN_DELETE ? `<a href="/equipment/${eq.id}/delete/" class="btn btn-sm btn-outline-danger">
           <i class="bi bi-trash3"></i>
-        </a>
+        </a>` : ''}
       </div>
     </div>
 

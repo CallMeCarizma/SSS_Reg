@@ -21,9 +21,11 @@
                    value="{{ q }}" placeholder="Поиск по контрагентам">
           </div>
           <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          {% if can_edit %}
           <a href="/contractors/create/" class="btn btn-primary flex-shrink-0" title="Добавить контрагента">
             <i class="bi bi-plus-circle"></i>
           </a>
+          {% endif %}
         </form>
       </div>
 
@@ -82,6 +84,8 @@
 
 <script>
 const CTR_TYPES = JSON.parse(document.getElementById('contractor-types-data').textContent);
+const CAN_EDIT = {{ can_edit|yesno:"true,false" }};
+const CAN_DELETE = {{ can_delete|yesno:"true,false" }};
 
 let currentCtrId = null;
 let currentCtr   = null;
@@ -144,12 +148,12 @@ function renderDetail(c) {
         <span class="badge ${TYPE_BADGE[c.type]||'bg-secondary'}">${esc(c.type_display)}</span>
       </div>
       <div class="d-flex gap-2 flex-shrink-0">
-        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+        ${CAN_EDIT ? `<button onclick="renderEditMode()" class="btn btn-sm btn-light border">
           <i class="bi bi-pencil-square"></i> Изменить
-        </button>
-        <a href="/contractors/${c.id}/delete/" class="btn btn-sm btn-outline-danger">
+        </button>` : ''}
+        ${CAN_DELETE ? `<a href="/contractors/${c.id}/delete/" class="btn btn-sm btn-outline-danger">
           <i class="bi bi-trash3"></i>
-        </a>
+        </a>` : ''}
       </div>
     </div>
     <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">

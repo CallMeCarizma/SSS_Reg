@@ -22,9 +22,11 @@
                    value="{{ q }}" placeholder="Поиск по документам">
           </div>
           <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Найти</button>
+          {% if can_edit %}
           <a href="/documents/create/" class="btn btn-primary flex-shrink-0" title="Добавить документ">
             <i class="bi bi-plus-circle"></i>
           </a>
+          {% endif %}
         </form>
       </div>
 
@@ -79,6 +81,8 @@
 <script>
 const ALL_OBJECTS = JSON.parse(document.getElementById('all-objects-data').textContent);
 const DOC_TYPES   = JSON.parse(document.getElementById('doc-types-data').textContent);
+const CAN_EDIT = {{ can_edit|yesno:"true,false" }};
+const CAN_DELETE = {{ can_delete|yesno:"true,false" }};
 
 let currentDocId = null;
 let currentDoc   = null;
@@ -133,7 +137,7 @@ function renderAttachments(attachments, docId, editable) {
           <i class="bi bi-paperclip" style="color:#6b7280;flex-shrink:0;"></i>
           <a href="${escAttr(a.url)}" target="_blank" rel="noopener"
              style="flex:1;font-weight:600;color:#0d6efd;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.name)}</a>
-          ${editable ? `<button onclick="deleteAttachment(${a.id},${docId})"
+          ${editable && CAN_DELETE ? `<button onclick="deleteAttachment(${a.id},${docId})"
                   style="border:none;background:none;color:#dc2626;padding:2px 6px;cursor:pointer;flex-shrink:0;" title="Удалить">
             <i class="bi bi-trash3"></i>
           </button>` : ''}
@@ -203,12 +207,12 @@ function renderDetail(doc) {
         <span class="badge ${TYPE_COLOR[doc.doc_type]||'bg-secondary'}">${esc(doc.doc_type_display)}</span>
       </div>
       <div class="d-flex gap-2 flex-shrink-0">
-        <button onclick="renderEditMode()" class="btn btn-sm btn-light border">
+        ${CAN_EDIT ? `<button onclick="renderEditMode()" class="btn btn-sm btn-light border">
           <i class="bi bi-pencil-square"></i> Изменить
-        </button>
-        <a href="/documents/${doc.id}/delete/" class="btn btn-sm btn-outline-danger">
+        </button>` : ''}
+        ${CAN_DELETE ? `<a href="/documents/${doc.id}/delete/" class="btn btn-sm btn-outline-danger">
           <i class="bi bi-trash3"></i>
-        </a>
+        </a>` : ''}
       </div>
     </div>
 
