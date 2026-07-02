@@ -1,0 +1,18 @@
+[Unit]
+Description=SSS Registry (Django/gunicorn)
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=sss
+Group=www-data
+WorkingDirectory=/srv/sss
+EnvironmentFile=/srv/sss/.env
+ExecStart=/srv/sss/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/srv/sss/sss.sock \
+    sss_core.wsgi:application
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
