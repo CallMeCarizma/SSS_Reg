@@ -155,6 +155,10 @@ a {
 
 .app-main {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-header {
@@ -191,6 +195,9 @@ a {
 
 .app-content {
   padding: 12px 32px 32px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .stats-grid {

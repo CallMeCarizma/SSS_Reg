@@ -114,6 +114,8 @@ def _contractor_json(c):
         'kpp': c.kpp,
         'ogrn': c.ogrn,
         'address': c.address,
+        'contact_person': c.contact_person,
+        'phone': c.phone,
         'note': c.note,
     }
 

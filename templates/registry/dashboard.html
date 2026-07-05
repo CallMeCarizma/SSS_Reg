@@ -72,7 +72,9 @@
         {% for eq in expiring_equipment %}
         {% with w=eq.next_verification_date|verification_warning %}
         <div class="col-xl-4 col-lg-6">
-          <div style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:12px;
+          <div ondblclick="window.location='/equipment/?select={{ eq.id }}'"
+               title="Двойной клик — открыть в оборудовании"
+               style="padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:12px;cursor:pointer;
             {% if w == 'warn-red' %}background:#fef2f2;border:1px solid #fca5a5;
             {% elif w == 'warn-orange' %}background:#fff7ed;border:1px solid #fdba74;
             {% elif w == 'warn-yellow' %}background:#fefce8;border:1px solid #fde68a;

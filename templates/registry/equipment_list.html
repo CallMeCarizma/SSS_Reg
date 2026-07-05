@@ -8,8 +8,8 @@
 {{ eq_type_choices|json_script:"eq-types-data" }}
 {{ all_objects|json_script:"all-objects-data" }}
 
-<div class="card border-0 shadow-sm" style="min-height: 76vh; overflow: hidden; border-radius: 18px;">
-  <div class="d-flex" style="min-height: 76vh;">
+<div class="card border-0 shadow-sm" style="height: 100%; overflow: hidden; border-radius: 18px;">
+  <div class="d-flex" style="height: 100%;">
 
     <!-- Левая колонка: список оборудования -->
     <div style="width: 400px; min-width: 400px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; overflow: hidden;">
@@ -183,7 +183,7 @@ function renderPassport(eq, editable) {
 function renderObjects(objects, eqId, editable) {
   const list = objects.length
     ? objects.map(o => `
-        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;">
+        <div ondblclick="window.location='/objects/?select=${o.object_id}'" title="Двойной клик — перейти к объекту" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;cursor:pointer;">
           <i class="bi bi-buildings" style="color:#6b7280;flex-shrink:0;"></i>
           <span style="flex:1;font-weight:600;font-size:.88rem;">${esc(o.object_name)}</span>
           ${editable && CAN_DELETE ? `<button onclick="unbindFromObject(${o.link_id},${eqId})"

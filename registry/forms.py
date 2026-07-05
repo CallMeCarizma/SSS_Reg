@@ -18,7 +18,7 @@ class DateInput(forms.DateInput):
 class ContractorForm(forms.ModelForm):
     class Meta:
         model = Contractor
-        fields = ["name", "full_name", "type", "inn", "kpp", "ogrn", "address", "note"]
+        fields = ["name", "full_name", "type", "inn", "kpp", "ogrn", "address", "contact_person", "phone", "note"]
         widgets = {"note": forms.Textarea(attrs={"rows": 3})}
 
 

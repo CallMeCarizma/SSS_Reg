@@ -6,8 +6,8 @@
 {% block content %}
 {{ type_choices|json_script:"contractor-types-data" }}
 
-<div class="card border-0 shadow-sm" style="min-height:76vh;overflow:hidden;border-radius:18px;">
-  <div class="d-flex" style="min-height:76vh;">
+<div class="card border-0 shadow-sm" style="height:100%;overflow:hidden;border-radius:18px;">
+  <div class="d-flex" style="height:100%;">
 
     <!-- Левая колонка -->
     <div style="width:400px;min-width:400px;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;overflow:hidden;">
@@ -52,6 +52,11 @@
           </div>
           {% if c.address %}
           <div style="font-size:.76rem;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.address }}</div>
+          {% endif %}
+          {% if c.contact_person or c.phone %}
+          <div style="font-size:.76rem;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            <i class="bi bi-person"></i> {{ c.contact_person }}{% if c.phone %} · {{ c.phone }}{% endif %}
+          </div>
           {% endif %}
         </div>
         {% empty %}
@@ -164,6 +169,10 @@ function renderDetail(c) {
         <div class="col-3">${field('ОГРН', c.ogrn)}</div>
       </div>
       ${field('Адрес', c.address)}
+      <div class="row g-2">
+        <div class="col-7">${field('Контактное лицо', c.contact_person)}</div>
+        <div class="col-5">${field('Телефон', c.phone)}</div>
+      </div>
       ${c.note ? field('Заметка', c.note) : ''}
     </div>`;
 }
@@ -195,6 +204,10 @@ function renderEditMode() {
         <div class="col-3">${eInput('ogrn', 'ОГРН', c.ogrn, false)}</div>
       </div>
       ${eInput('address', 'Адрес', c.address, false)}
+      <div class="row g-2">
+        <div class="col-7">${eInput('contact_person', 'Контактное лицо', c.contact_person, false)}</div>
+        <div class="col-5">${eInput('phone', 'Телефон', c.phone, false)}</div>
+      </div>
       ${eTextarea('note', 'Заметка', c.note)}
     </div>
     <div style="padding:16px 28px;border-top:1px solid var(--border);display:flex;gap:12px;flex-shrink:0;background:var(--surface-2);">

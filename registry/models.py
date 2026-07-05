@@ -14,6 +14,8 @@ class Contractor(models.Model):
     kpp = models.CharField("КПП", max_length=9, blank=True, default="")
     ogrn = models.CharField("ОГРН", max_length=15, blank=True, default="")
     address = models.CharField("Адрес", max_length=512, blank=True, default="")
+    contact_person = models.CharField("Контактное лицо", max_length=255, blank=True, default="")
+    phone = models.CharField("Телефон", max_length=50, blank=True, default="")
     note = models.TextField("Заметка", blank=True, default="")
 
     class Meta:

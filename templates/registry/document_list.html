@@ -7,8 +7,8 @@
 {{ all_objects|json_script:"all-objects-data" }}
 {{ doc_type_choices|json_script:"doc-types-data" }}
 
-<div class="card border-0 shadow-sm" style="min-height: 76vh; overflow: hidden; border-radius: 18px;">
-  <div class="d-flex" style="min-height: 76vh;">
+<div class="card border-0 shadow-sm" style="height: 100%; overflow: hidden; border-radius: 18px;">
+  <div class="d-flex" style="height: 100%;">
 
     <!-- Левая колонка: список документов -->
     <div style="width: 400px; min-width: 400px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; overflow: hidden;">
@@ -107,6 +107,12 @@ const FV = 'font-weight:600;color:var(--text);font-size:.9rem;';
 
 function field(label, value) {
   return `<div style="${FS}"><div style="${FL}">${label}</div><div style="${FV}">${esc(value)}</div></div>`;
+}
+function fieldLink(label, value, url) {
+  const val = url
+    ? `<span ondblclick="window.location='${url}'" style="cursor:pointer;" title="Двойной клик — перейти к объекту">${esc(value)} <i class="bi bi-box-arrow-up-right" style="font-size:.68rem;opacity:.4;margin-left:3px;"></i></span>`
+    : esc(value);
+  return `<div style="${FS}"><div style="${FL}">${label}</div><div style="${FV}">${val}</div></div>`;
 }
 function eInput(name, label, value, required) {
   return `<div style="${FS}"><div style="${FL}">${label}${required?'<span style="color:#ef4444;margin-left:2px">*</span>':''}</div>
@@ -218,7 +224,7 @@ function renderDetail(doc) {
 
     <div style="padding:20px 28px;flex:1;display:flex;flex-direction:column;gap:10px;">
       <div class="row g-2">
-        <div class="col-8">${field('Объект', doc.object_name)}</div>
+        <div class="col-8">${fieldLink('Объект', doc.object_name, doc.object_id ? '/objects/?select=' + doc.object_id : null)}</div>
         <div class="col-4">${field('Дата', doc.doc_date_display)}</div>
       </div>
       <div class="row g-2">
