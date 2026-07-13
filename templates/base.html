@@ -76,6 +76,11 @@
       </button>
 
       {% if user.is_authenticated %}
+      <a href="/accounts/password_change/" class="sidebar-link mt-2">
+        <i class="bi bi-key"></i>
+        <span>Сменить пароль</span>
+      </a>
+
       <form method="post" action="/accounts/logout/" class="mt-2">
         {% csrf_token %}
         <button class="btn btn-sidebar-logout w-100" type="submit">
