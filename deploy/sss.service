@@ -5,7 +5,7 @@ After=network.target postgresql.service
 [Service]
 Type=notify
 User=sss
-Group=www-data
+Group=sss
 WorkingDirectory=/srv/sss
 EnvironmentFile=/srv/sss/.env
 ExecStart=/srv/sss/.venv/bin/gunicorn \
